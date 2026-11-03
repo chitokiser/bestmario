@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useRouter, usePathname } from 'next/navigation';
 import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
@@ -157,8 +158,15 @@ export default function LandingClient({ locale }: { locale: string }) {
         className="sticky top-0 z-40 flex items-center justify-between px-4 py-3 gap-2"
         style={{ background: 'var(--color-primary)' }}
       >
-        <a href="#" className="text-white font-extrabold text-lg tracking-tight">
-          BestMario
+        <a href="#" className="flex items-center">
+          <Image
+            src="/bestmario-logo.png"
+            alt="BestMario"
+            width={140}
+            height={47}
+            priority
+            className="h-10 w-auto"
+          />
         </a>
 
         <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -211,6 +219,15 @@ export default function LandingClient({ locale }: { locale: string }) {
           maxHeight: '500px',
         }}
       >
+        {/* Logo */}
+        <Image
+          src="/bestmario-logo.png"
+          alt="BestMario"
+          width={280}
+          height={93}
+          priority
+          className="h-20 w-auto drop-shadow-md"
+        />
         {/* Merchant name or BestMario default */}
         <h1 className="text-4xl font-extrabold text-white tracking-tight drop-shadow-sm">
           {merchantLoading ? 'BestMario' : (merchant?.name ?? 'BestMario')}
