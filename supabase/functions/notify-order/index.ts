@@ -1,5 +1,8 @@
-// 새 주문 → 해당 분야를 선택한 승인(active) 기술자에게 웹 푸시.
-// DB 트리거(notify_new_order)가 호출한다. 공유 비밀 헤더로만 접근을 허용한다.
+// 주문 이벤트 → 웹 푸시.
+//   (kind 없음) 새 주문      → 그 분야를 고른 승인(active) 기술자
+//   assigned    기술자 수락  → 주문한 고객
+//   quote       새 견적 도착 → 주문한 고객
+// DB 트리거가 호출한다. 공유 비밀 헤더로만 접근을 허용한다.
 import webpush from 'npm:web-push@3.6.7';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -22,27 +25,42 @@ const MSG = {
   },
 } as const;
 
+// 고객에게 가는 알림
+const CUSTOMER = {
+  assigned: {
+    ko: (cat: string) => ({ title: `기술자 배정 완료 · ${cat}`, body: '기술자가 요청을 수락했어요. 주문 상세에서 확인해 보세요.' }),
+    vi: (cat: string) => ({ title: `Đã có kỹ thuật viên · ${cat}`, body: 'Kỹ thuật viên đã nhận đơn của bạn. Xem chi tiết đơn hàng.' }),
+    en: (cat: string) => ({ title: `Technician assigned · ${cat}`, body: 'A technician accepted your request. Check the order details.' }),
+  },
+  quote: {
+    ko: (cat: string, price: string) => ({ title: `새 견적 도착 · ${cat}`, body: `견적 ${price}이(가) 도착했어요. 비교하고 선택해 보세요.` }),
+    vi: (cat: string, price: string) => ({ title: `Có báo giá mới · ${cat}`, body: `Báo giá ${price}. Hãy so sánh và chọn.` }),
+    en: (cat: string, price: string) => ({ title: `New quote · ${cat}`, body: `A quote of ${price} arrived. Compare and choose.` }),
+  },
+} as const;
+
 type Lang = 'ko' | 'vi' | 'en';
 const lang = (l: string | null): Lang => (l === 'ko' || l === 'en' ? l : 'vi');
+const won = (n: number | null | undefined) => (n ? `${Number(n).toLocaleString('vi-VN')}₫` : '');
+
+type Built = { title: string; body: string; url: string };
 
 Deno.serve(async (req) => {
   if (req.headers.get('x-push-secret') !== Deno.env.get('PUSH_SECRET')) {
     return new Response('forbidden', { status: 403 });
   }
 
-  const { order_id } = await req.json().catch(() => ({}));
+  const { order_id, kind: eventKind, quotation_id } = await req.json().catch(() => ({}));
   if (!order_id) return new Response('bad request', { status: 400 });
 
   const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
   const { data: order } = await sb
     .from('service_orders')
-    .select('id, category_id, order_type, status, technician_uid, offered_price')
+    .select('id, category_id, order_type, status, customer_uid, technician_uid, offered_price')
     .eq('id', order_id)
     .maybeSingle();
-  if (!order || order.status !== 'pending' || order.technician_uid) {
-    return Response.json({ sent: 0, reason: 'not open' });
-  }
+  if (!order) return Response.json({ sent: 0, reason: 'no order' });
 
   const { data: category } = await sb
     .from('service_categories')
@@ -50,14 +68,37 @@ Deno.serve(async (req) => {
     .eq('id', order.category_id)
     .maybeSingle();
 
-  // 이 분야를 고른 승인 기술자
-  const { data: techs } = await sb
-    .from('technician_profiles')
-    .select('uid')
-    .eq('status', 'active')
-    .contains('skills', [order.category_id]);
-  const uids = (techs ?? []).map((t) => t.uid as string);
-  if (uids.length === 0) return Response.json({ sent: 0, reason: 'no technicians' });
+  // 받는 사람(uid)과 알림 내용을 이벤트별로 정한다
+  let uids: string[] = [];
+  let build: (l: Lang, cat: string) => Built;
+
+  if (eventKind === 'assigned') {
+    uids = [order.customer_uid as string];
+    build = (l, cat) => ({ ...CUSTOMER.assigned[l](cat), url: `/${l}/orders/${order.id}` });
+  } else if (eventKind === 'quote') {
+    const { data: quote } = await sb.from('quotations').select('price').eq('id', quotation_id).maybeSingle();
+    uids = [order.customer_uid as string];
+    const price = won(quote?.price as number | undefined);
+    build = (l, cat) => ({ ...CUSTOMER.quote[l](cat, price), url: `/${l}/orders/${order.id}` });
+  } else {
+    // 새 주문 → 이 분야를 고른 승인 기술자
+    if (order.status !== 'pending' || order.technician_uid) {
+      return Response.json({ sent: 0, reason: 'not open' });
+    }
+    const { data: techs } = await sb
+      .from('technician_profiles')
+      .select('uid')
+      .eq('status', 'active')
+      .contains('skills', [order.category_id]);
+    uids = (techs ?? []).map((t) => t.uid as string);
+    const kind = order.order_type === 'fixed' ? 'fixed' : order.order_type === 'customer_bid' ? 'offer' : 'bid';
+    const price = won(order.offered_price as number | null);
+    build = (l, cat) => ({
+      ...(kind === 'offer' ? MSG.offer[l](cat, price) : MSG[kind][l](cat)),
+      url: `/${l}/technician`,
+    });
+  }
+  if (uids.length === 0) return Response.json({ sent: 0, reason: 'no recipients' });
 
   const [{ data: subs }, { data: users }] = await Promise.all([
     sb.from('push_subscriptions').select('id, uid, endpoint, p256dh, auth').in('uid', uids),
@@ -71,20 +112,16 @@ Deno.serve(async (req) => {
     Deno.env.get('VAPID_PRIVATE')!,
   );
 
-  const kind = order.order_type === 'fixed' ? 'fixed' : order.order_type === 'customer_bid' ? 'offer' : 'bid';
-  const price = order.offered_price ? `${Number(order.offered_price).toLocaleString('vi-VN')}₫` : '';
   let sent = 0;
   const dead: string[] = [];
+  // 같은 주문의 같은 이벤트끼리만 교체되도록 tag 에 이벤트 종류를 넣는다
+  const tag = `${eventKind ?? 'new'}-${order.id}${quotation_id ? `-${quotation_id}` : ''}`;
 
   await Promise.all(
     (subs ?? []).map(async (s) => {
       const l = langOf.get(s.uid as string) ?? 'vi';
       const catName = category ? (category[`name_${l}` as 'name_ko'] as string) : '';
-      const payload = JSON.stringify({
-        ...(kind === 'offer' ? MSG.offer[l](catName, price) : MSG[kind][l](catName)),
-        url: `/${l}/technician`,
-        tag: `order-${order.id}`,
-      });
+      const payload = JSON.stringify({ ...build(l, catName), tag });
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },

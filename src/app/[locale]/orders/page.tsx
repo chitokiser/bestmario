@@ -6,6 +6,7 @@ import OrderStatusBadge from '@/components/OrderStatusBadge';
 import { useOrders } from '@/hooks/useOrders';
 import { useSupabase } from '@/hooks/useSupabase';
 import { useAuthState } from '@/hooks/useAuthState';
+import PushBanner from '@/components/PushBanner';
 import { formatDateTime, formatVND, localizedName } from '@/lib/format';
 import type { Payment, ServiceCategory } from '@/types/supabase';
 
@@ -68,6 +69,8 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
         <h1 className="text-xl font-extrabold mb-6" style={{ color: 'var(--color-text)' }}>
           {t('내 주문 내역', 'Đơn hàng của tôi', 'My Orders')}
         </h1>
+
+        {user && <PushBanner locale={locale} audience="customer" />}
 
         {!authLoading && !user ? (
           <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>

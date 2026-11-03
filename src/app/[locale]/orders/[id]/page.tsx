@@ -7,6 +7,7 @@ import QuoteList from '@/components/QuoteList';
 import { callReleaseEscrow } from '@/lib/firebase';
 import { useSupabase } from '@/hooks/useSupabase';
 import { useAuthState } from '@/hooks/useAuthState';
+import PushBanner from '@/components/PushBanner';
 import { formatDateTime, formatVND, localizedName } from '@/lib/format';
 import type { Payment, ServiceCategory, ServiceOrder, Warranty } from '@/types/supabase';
 import type { TechnicianPublic } from '@/hooks/useQuotations';
@@ -198,6 +199,8 @@ export default function OrderDetailPage({
 
   return (
     <Shell locale={locale} onBack={back}>
+      {order.status === 'pending' && <PushBanner locale={locale} audience="customer" />}
+
       {/* 헤더 */}
       <div className="rounded-2xl border p-5 mb-4" style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}>
         <div className="flex items-start justify-between gap-2 mb-3">
