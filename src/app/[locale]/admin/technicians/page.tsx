@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useCallback, useEffect, useState } from 'react';
+import { use, useCallback, useEffect, useRef, useState } from 'react';
 import { useSupabase } from '@/hooks/useSupabase';
 import { localizedName } from '@/lib/format';
 import type { DbUser, ServiceCategory, TechnicianProfile, TechnicianStatus } from '@/types/supabase';
@@ -27,13 +27,19 @@ export default function AdminTechniciansPage({ params }: { params: Promise<{ loc
   const t = (ko: string, vi: string, en: string) =>
     locale === 'vi' ? vi : locale === 'en' ? en : ko;
 
+  // 토큰이 붙기 전(비로그인) 요청의 응답이 나중에 도착해 결과를 덮어쓰지 않도록 최신 요청만 반영한다
+  const seq = useRef(0);
+
   const load = useCallback(async () => {
+    const mine = ++seq.current;
     setLoading(true);
     const [profs, us, cats] = await Promise.all([
       supabase.from('technician_profiles').select('*').order('status'),
       supabase.from('users').select('*').in('role', ['technician', 'admin']),
       supabase.from('service_categories').select('*'),
     ]);
+
+    if (mine !== seq.current) return;
 
     const firstError = profs.error ?? us.error ?? cats.error;
     if (firstError) setError(firstError.message);
