@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useRef, useState } from 'react';
 import { useSupabase } from '@/hooks/useSupabase';
 import { useAuthState } from '@/hooks/useAuthState';
-import { localizedName } from '@/lib/format';
+import SkillSection from '@/components/SkillSection';
 import type { ServiceCategory, TechnicianProfile } from '@/types/supabase';
 
 const DOC_KINDS = [
@@ -66,10 +66,6 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ lo
     void load();
   }, [load]);
 
-  const toggleSkill = (id: string) => {
-    setSkills((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
-  };
-
   const handleSave = async () => {
     if (saving || !user) return;
     setSaving(true);
@@ -80,10 +76,13 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ lo
       // WITH CHECK(status='pending') 를 제안 행에 적용하므로, 이미 승인된
       // (status='active') 기술자의 저장이 RLS 오류로 거부된다.
       // status 는 관리자만 바꿀 수 있으니 클라이언트가 보내지도 않는다.
-      const { error: profErr } = profile
-        ? await supabase.from('technician_profiles').update({ skills }).eq('uid', user.uid)
-        : await supabase.from('technician_profiles').insert({ uid: user.uid, status: 'pending', skills });
-      if (profErr) throw new Error(profErr.message);
+      // 분야(skills)는 직접 바꿀 수 없다 — 분야 추가 신청과 관리자 승인으로만 늘어난다
+      if (!profile) {
+        const { error: profErr } = await supabase
+          .from('technician_profiles')
+          .insert({ uid: user.uid, status: 'pending', skills: [] });
+        if (profErr) throw new Error(profErr.message);
+      }
 
       const { error: userErr } = await supabase
         .from('users')
@@ -122,7 +121,7 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ lo
         ? await supabase.from('technician_profiles').update({ documents }).eq('uid', user.uid)
         : await supabase
             .from('technician_profiles')
-            .insert({ uid: user.uid, status: 'pending', skills, documents });
+            .insert({ uid: user.uid, status: 'pending', skills: [], documents });
       if (profErr) throw new Error(profErr.message);
 
       setMessage(t('서류를 등록했습니다.', 'Đã tải giấy tờ.', 'Document uploaded.'));
@@ -199,31 +198,16 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ lo
         </div>
       </section>
 
-      {/* 기술 분야 */}
-      <section className="rounded-2xl border p-4" style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}>
-        <h2 className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--color-text-muted)' }}>
-          {t('기술 분야', 'Lĩnh vực', 'Skills')} ({skills.length}/{categories.length})
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {categories.map((c) => {
-            const on = skills.includes(c.id);
-            return (
-              <button
-                key={c.id}
-                onClick={() => toggleSkill(c.id)}
-                className="rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all"
-                style={
-                  on
-                    ? { background: 'var(--color-primary-bg, #FFEBEE)', borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }
-                    : { background: 'var(--color-bg, #f7f7f8)', borderColor: 'var(--color-border, #ebebed)', color: 'var(--color-text-2, #5c5c6e)' }
-                }
-              >
-                {on ? '✓ ' : ''}{c.icon} {localizedName(c, locale)}
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      {/* 기술 분야: 승인된 분야 + 추가 신청 */}
+      {user && (
+        <SkillSection
+          uid={user.uid}
+          locale={locale}
+          categories={categories}
+          skills={skills}
+          canRequest={status === 'active'}
+        />
+      )}
 
       {/* 서류 */}
       <section className="rounded-2xl border p-4 space-y-3" style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}>

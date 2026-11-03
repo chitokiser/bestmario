@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useRef, useState } from 'react';
 import { useSupabase } from '@/hooks/useSupabase';
 import { localizedName } from '@/lib/format';
-import type { DbUser, ServiceCategory, TechnicianProfile, TechnicianStatus } from '@/types/supabase';
+import type { DbUser, ServiceCategory, SkillRequest, TechnicianProfile, TechnicianStatus } from '@/types/supabase';
 
 const STATUS_STYLE: Record<TechnicianStatus, { color: string; bg: string; ko: string; vi: string; en: string }> = {
   pending:   { color: '#FFA000', bg: '#FFF8E1', ko: '승인 대기', vi: 'Chờ duyệt',   en: 'Pending' },
@@ -19,6 +19,7 @@ export default function AdminTechniciansPage({ params }: { params: Promise<{ loc
   const [profiles, setProfiles] = useState<TechnicianProfile[]>([]);
   const [users, setUsers] = useState<DbUser[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [skillReqs, setSkillReqs] = useState<SkillRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,21 +34,23 @@ export default function AdminTechniciansPage({ params }: { params: Promise<{ loc
   const load = useCallback(async () => {
     const mine = ++seq.current;
     setLoading(true);
-    const [profs, us, cats] = await Promise.all([
+    const [profs, us, cats, reqs] = await Promise.all([
       supabase.from('technician_profiles').select('*').order('status'),
       supabase.from('users').select('*').in('role', ['technician', 'admin']),
       supabase.from('service_categories').select('*'),
+      supabase.from('skill_requests').select('*').eq('status', 'pending').order('created_at'),
     ]);
 
     if (mine !== seq.current) return;
 
-    const firstError = profs.error ?? us.error ?? cats.error;
+    const firstError = profs.error ?? us.error ?? cats.error ?? reqs.error;
     if (firstError) setError(firstError.message);
     else setError(null);
 
     setProfiles((profs.data ?? []) as TechnicianProfile[]);
     setUsers((us.data ?? []) as DbUser[]);
     setCategories((cats.data ?? []) as ServiceCategory[]);
+    setSkillReqs((reqs.data ?? []) as SkillRequest[]);
     setLoading(false);
   }, [supabase]);
 
@@ -88,6 +91,29 @@ export default function AdminTechniciansPage({ params }: { params: Promise<{ loc
     window.open(data.signedUrl, '_blank', 'noopener');
   };
 
+  // 분야 추가 신청 처리 — 승인하면 DB 가 기술자의 분야에 추가한다
+  const decideSkill = async (id: string, approve: boolean) => {
+    if (acting) return;
+    let reason = '';
+    if (!approve) {
+      const input = window.prompt(
+        t('반려 사유를 입력해 주세요 (신청자에게 표시됩니다)', 'Nhập lý do từ chối (hiển thị cho người nộp đơn)', 'Enter the rejection reason (shown to the applicant)')
+      );
+      if (input === null) return;
+      if (!input.trim()) {
+        setError(t('반려 사유를 입력해야 합니다', 'Cần nhập lý do từ chối', 'A reason is required'));
+        return;
+      }
+      reason = input.trim();
+    }
+    setActing(id);
+    setError(null);
+    const { error: err } = await supabase.rpc('decide_skill_request', { p_id: id, p_approve: approve, p_reason: reason });
+    if (err) setError(err.message);
+    await load();
+    setActing(null);
+  };
+
   const reject = (uid: string) => {
     const reason = window.prompt(
       t('반려 사유를 입력해 주세요 (신청자에게 표시됩니다)', 'Nhập lý do từ chối (hiển thị cho người nộp đơn)', 'Enter the rejection reason (shown to the applicant)')
@@ -118,6 +144,44 @@ export default function AdminTechniciansPage({ params }: { params: Promise<{ loc
       </h1>
 
       {error && <p className="text-xs font-semibold" style={{ color: '#D32F2F' }}>{error}</p>}
+
+      {skillReqs.length > 0 && (
+        <section className="rounded-2xl border p-4" style={{ background: 'var(--color-surface, #fff)', borderColor: '#FFB74D' }} aria-label={t('분야 추가 신청', 'Đăng ký thêm lĩnh vực', 'Skill requests')}>
+          <h2 className="mb-3 text-sm font-extrabold" style={{ color: '#E65100' }}>
+            🧩 {t('분야 추가 신청', 'Đăng ký thêm lĩnh vực', 'Skill requests')} ({skillReqs.length})
+          </h2>
+          <ul className="space-y-3">
+            {skillReqs.map((r) => (
+              <li key={r.id} className="rounded-xl border p-3" style={{ borderColor: 'var(--color-border, #ebebed)' }}>
+                <p className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
+                  {nameOf(r.uid)} <span style={{ color: 'var(--color-text-muted)' }}>→</span> {skillLabel(r.category_id)}
+                </p>
+                {r.note && (
+                  <p className="mt-1 whitespace-pre-wrap text-xs" style={{ color: 'var(--color-text-muted)' }}>{r.note}</p>
+                )}
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={() => void decideSkill(r.id, true)}
+                    disabled={acting !== null}
+                    className="flex-1 rounded-xl py-2 text-sm font-bold text-white disabled:opacity-50"
+                    style={{ background: '#388E3C' }}
+                  >
+                    {t('승인', 'Phê duyệt', 'Approve')}
+                  </button>
+                  <button
+                    onClick={() => void decideSkill(r.id, false)}
+                    disabled={acting !== null}
+                    className="flex-1 rounded-xl border py-2 text-sm font-bold disabled:opacity-50"
+                    style={{ borderColor: '#6D4C41', color: '#6D4C41' }}
+                  >
+                    {t('반려', 'Từ chối', 'Reject')}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {profiles.length === 0 ? (
         <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>

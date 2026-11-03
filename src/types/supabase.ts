@@ -147,3 +147,16 @@ export interface Database {
   messages: Message;
   service_settings: ServiceSetting;
 }
+
+export type SkillRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface SkillRequest {
+  id: string;
+  uid: string;
+  category_id: string;
+  note: string;
+  status: SkillRequestStatus;
+  reject_reason: string;
+  created_at: string;
+  decided_at: string | null;
+}
