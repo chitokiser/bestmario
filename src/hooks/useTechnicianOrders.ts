@@ -120,6 +120,23 @@ export function useTechnicianOrders() {
 
       if (err) throw new Error(err.message);
       if (!data || data.length === 0) {
+        // 0건 갱신의 이유는 여러 가지다 — 실제 상태를 읽어 정확한 사유를 알려 준다
+        const { data: cur } = await supabase
+          .from('service_orders')
+          .select('status, technician_uid, order_type')
+          .eq('id', orderId)
+          .maybeSingle();
+        if (cur?.technician_uid === uid) {
+          await fetchAll();
+          return;
+        }
+        if (cur && cur.status === 'pending' && cur.technician_uid === null) {
+          throw new Error(
+            cur.order_type === 'quote_request'
+              ? '견적 요청 주문은 수락이 아니라 견적을 제출해 주세요'
+              : '지금은 이 주문을 수락할 수 없습니다. 잠시 후 다시 시도해 주세요'
+          );
+        }
         throw new Error('이미 다른 기술자가 수락한 주문입니다');
       }
 

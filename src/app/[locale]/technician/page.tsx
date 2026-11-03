@@ -56,6 +56,11 @@ export default function TechnicianHomePage({ params }: { params: Promise<{ local
         </span>
         <OrderStatusBadge status={order.status} locale={locale} />
       </div>
+      {order.status === 'pending' && order.order_type === 'quote_request' && (
+        <p className="mt-1 text-[11px] font-bold" style={{ color: 'var(--color-navy, #1A237E)' }}>
+          🧾 {t('견적 요청 — 견적을 제출해 주세요', 'Yêu cầu báo giá — hãy gửi báo giá', 'Quote request — submit a quote')}
+        </p>
+      )}
       <p className="mt-1.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>
         🕒 {formatDateTime(order.scheduled_at, locale)}
       </p>
@@ -107,6 +112,15 @@ export default function TechnicianHomePage({ params }: { params: Promise<{ local
             {pendingOrders.map((o) => (
               <OrderCard key={o.id} order={o}>
                 <div className="mt-3 flex gap-2">
+                  {o.order_type === 'quote_request' ? (
+                    <button
+                      onClick={() => router.push(`/${locale}/technician/quotes`)}
+                      className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white"
+                      style={{ background: 'var(--color-navy, #1A237E)' }}
+                    >
+                      {t('견적 제출', 'Gửi báo giá', 'Submit quote')}
+                    </button>
+                  ) : (
                   <button
                     onClick={() => handleAccept(o.id)}
                     disabled={acting !== null}
@@ -115,6 +129,7 @@ export default function TechnicianHomePage({ params }: { params: Promise<{ local
                   >
                     {acting === o.id ? t('처리 중…', 'Đang xử lý…', 'Processing…') : t('수락', 'Nhận đơn', 'Accept')}
                   </button>
+                  )}
                   <button
                     onClick={() => void rejectOrder(o.id)}
                     className="flex-1 rounded-xl border py-2.5 text-sm font-bold"
