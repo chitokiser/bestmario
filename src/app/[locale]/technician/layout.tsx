@@ -13,6 +13,38 @@ const NAV = [
   { href: '/profile',     icon: '👤', ko: '프로필', vi: 'Hồ sơ',    en: 'Profile' },
 ];
 
+// 컴포넌트 함수 밖에 둔다 — 안에서 정의하면 매 렌더마다 새 타입이 되어 서브트리가 remount 된다
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="min-h-screen px-4 py-6" style={{ background: 'var(--color-bg)' }}>
+      <div className="mx-auto w-full max-w-lg">{children}</div>
+    </main>
+  );
+}
+
+function Notice({
+  icon,
+  title,
+  body,
+  action,
+}: {
+  icon: string;
+  title: string;
+  body: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <Shell>
+      <div className="rounded-2xl border p-6 text-center" style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}>
+        <div className="text-4xl mb-3">{icon}</div>
+        <p className="text-sm font-bold mb-1" style={{ color: 'var(--color-text)' }}>{title}</p>
+        <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{body}</p>
+        {action}
+      </div>
+    </Shell>
+  );
+}
+
 export default function TechnicianLayout({
   children,
   params,
@@ -78,23 +110,6 @@ export default function TechnicianLayout({
       setRegistering(false);
     }
   };
-
-  const Shell = ({ children: inner }: { children: React.ReactNode }) => (
-    <main className="min-h-screen px-4 py-6" style={{ background: 'var(--color-bg)' }}>
-      <div className="mx-auto w-full max-w-lg">{inner}</div>
-    </main>
-  );
-
-  const Notice = ({ icon, title, body, action }: { icon: string; title: string; body: string; action?: React.ReactNode }) => (
-    <Shell>
-      <div className="rounded-2xl border p-6 text-center" style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}>
-        <div className="text-4xl mb-3">{icon}</div>
-        <p className="text-sm font-bold mb-1" style={{ color: 'var(--color-text)' }}>{title}</p>
-        <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{body}</p>
-        {action}
-      </div>
-    </Shell>
-  );
 
   if (authLoading || roleLoading || profileLoading) {
     return <Shell><p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{t('불러오는 중…', 'Đang tải…', 'Loading…')}</p></Shell>;

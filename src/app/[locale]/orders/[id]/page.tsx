@@ -11,6 +11,28 @@ import { formatDateTime, formatVND, localizedName } from '@/lib/format';
 import type { Payment, ServiceCategory, ServiceOrder, Warranty } from '@/types/supabase';
 import type { TechnicianPublic } from '@/hooks/useQuotations';
 
+// 컴포넌트 함수 밖에 둔다 — 안에서 정의하면 매 렌더마다 새 타입이 되어 서브트리가 remount 된다
+function Shell({
+  locale,
+  onBack,
+  children,
+}: {
+  locale: string;
+  onBack: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <main className="min-h-screen px-4 py-6" style={{ background: 'var(--color-bg)' }}>
+      <div className="mx-auto w-full max-w-lg">
+        <button onClick={onBack} className="mb-4 text-xs font-semibold" style={{ color: 'var(--color-text-muted)' }}>
+          ← {locale === 'vi' ? 'Đơn hàng' : locale === 'en' ? 'Orders' : '주문 내역'}
+        </button>
+        {children}
+      </div>
+    </main>
+  );
+}
+
 export default function OrderDetailPage({
   params,
 }: {
@@ -116,33 +138,20 @@ export default function OrderDetailPage({
     }
   };
 
-  const Shell = ({ children }: { children: React.ReactNode }) => (
-    <main className="min-h-screen px-4 py-6" style={{ background: 'var(--color-bg)' }}>
-      <div className="mx-auto w-full max-w-lg">
-        <button
-          onClick={() => router.push(`/${locale}/orders`)}
-          className="mb-4 text-xs font-semibold"
-          style={{ color: 'var(--color-text-muted)' }}
-        >
-          ← {t('주문 내역', 'Đơn hàng', 'Orders')}
-        </button>
-        {children}
-      </div>
-    </main>
-  );
+  const back = () => router.push(`/${locale}/orders`);
 
   if (!authLoading && !user) {
-    return <Shell><p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{t('로그인이 필요합니다.', 'Cần đăng nhập.', 'Login required.')}</p></Shell>;
+    return <Shell locale={locale} onBack={back}><p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{t('로그인이 필요합니다.', 'Cần đăng nhập.', 'Login required.')}</p></Shell>;
   }
   if (loading) {
-    return <Shell><p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{t('불러오는 중…', 'Đang tải…', 'Loading…')}</p></Shell>;
+    return <Shell locale={locale} onBack={back}><p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{t('불러오는 중…', 'Đang tải…', 'Loading…')}</p></Shell>;
   }
   if (loadError || !order) {
-    return <Shell><p className="text-sm font-semibold" style={{ color: '#D32F2F' }}>{loadError}</p></Shell>;
+    return <Shell locale={locale} onBack={back}><p className="text-sm font-semibold" style={{ color: '#D32F2F' }}>{loadError}</p></Shell>;
   }
 
   return (
-    <Shell>
+    <Shell locale={locale} onBack={back}>
       {/* 헤더 */}
       <div className="rounded-2xl border p-5 mb-4" style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}>
         <div className="flex items-start justify-between gap-2 mb-3">

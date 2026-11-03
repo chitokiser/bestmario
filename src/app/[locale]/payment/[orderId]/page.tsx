@@ -8,6 +8,20 @@ import { useAuthState } from '@/hooks/useAuthState';
 import { formatVND } from '@/lib/format';
 import type { Payment, ServiceOrder } from '@/types/supabase';
 
+// 컴포넌트 함수 밖에 둔다 — 안에서 정의하면 매 렌더마다 새 타입이 되어 서브트리가 remount 된다
+function Shell({ locale, children }: { locale: string; children: React.ReactNode }) {
+  return (
+    <main className="min-h-screen px-4 py-6" style={{ background: 'var(--color-bg)' }}>
+      <div className="mx-auto w-full max-w-lg">
+        <h1 className="text-xl font-extrabold mb-6" style={{ color: 'var(--color-text)' }}>
+          {locale === 'vi' ? 'Thanh toán' : locale === 'en' ? 'Payment' : '결제'}
+        </h1>
+        {children}
+      </div>
+    </main>
+  );
+}
+
 export default function PaymentPage({
   params,
 }: {
@@ -93,20 +107,9 @@ export default function PaymentPage({
     void load();
   }, [authLoading, user, load]);
 
-  const Shell = ({ children }: { children: React.ReactNode }) => (
-    <main className="min-h-screen px-4 py-6" style={{ background: 'var(--color-bg)' }}>
-      <div className="mx-auto w-full max-w-lg">
-        <h1 className="text-xl font-extrabold mb-6" style={{ color: 'var(--color-text)' }}>
-          {t('결제', 'Thanh toán', 'Payment')}
-        </h1>
-        {children}
-      </div>
-    </main>
-  );
-
   if (!authLoading && !user) {
     return (
-      <Shell>
+      <Shell locale={locale}>
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
           {t('로그인이 필요합니다.', 'Cần đăng nhập.', 'Login required.')}
         </p>
@@ -116,7 +119,7 @@ export default function PaymentPage({
 
   if (loading) {
     return (
-      <Shell>
+      <Shell locale={locale}>
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
           {t('불러오는 중…', 'Đang tải…', 'Loading…')}
         </p>
@@ -126,7 +129,7 @@ export default function PaymentPage({
 
   if (loadError || !order) {
     return (
-      <Shell>
+      <Shell locale={locale}>
         <p className="text-sm font-semibold" style={{ color: '#D32F2F' }}>{loadError}</p>
       </Shell>
     );
@@ -135,7 +138,7 @@ export default function PaymentPage({
   // 이미 결제 완료된 주문
   if (amount > 0 && paid >= amount) {
     return (
-      <Shell>
+      <Shell locale={locale}>
         <div className="rounded-2xl border p-6 text-center" style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}>
           <div className="text-3xl mb-2">✅</div>
           <p className="text-sm font-bold mb-1" style={{ color: 'var(--color-text)' }}>
@@ -159,7 +162,7 @@ export default function PaymentPage({
   // quote_request 인데 아직 견적을 선택하지 않은 주문 — 결제할 금액이 없다
   if (amount <= 0) {
     return (
-      <Shell>
+      <Shell locale={locale}>
         <div className="rounded-2xl border p-6 text-center" style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}>
           <div className="text-3xl mb-2">🧾</div>
           <p className="text-sm font-bold mb-1" style={{ color: 'var(--color-text)' }}>
@@ -185,7 +188,7 @@ export default function PaymentPage({
   }
 
   return (
-    <Shell>
+    <Shell locale={locale}>
       <PaymentSheet
         orderId={orderId}
         amount={amount - paid}
