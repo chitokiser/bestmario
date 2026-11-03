@@ -7,6 +7,7 @@ import { useAuthState } from '@/hooks/useAuthState';
 const NAV = [
   { href: '',             icon: '📊', ko: '대시보드', vi: 'Tổng quan',  en: 'Dashboard' },
   { href: '/technicians', icon: '🛠️', ko: '기술자',   vi: 'Kỹ thuật viên', en: 'Technicians' },
+  { href: '/members',     icon: '👥', ko: '회원',     vi: 'Thành viên', en: 'Members' },
   { href: '/orders',      icon: '🧰', ko: '주문',     vi: 'Đơn hàng',   en: 'Orders' },
   { href: '/payments',    icon: '💳', ko: '결제·설정', vi: 'Thanh toán', en: 'Payments' },
 ];
@@ -106,7 +107,7 @@ export default function AdminLayout({
       </div>
 
       <nav
-        className="sticky bottom-0 z-50 grid grid-cols-4 border-t"
+        className="sticky bottom-0 z-50 grid grid-cols-5 border-t"
         style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}
       >
         {NAV.map((n) => {
