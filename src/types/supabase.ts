@@ -1,0 +1,137 @@
+// Supabase DB 테이블 타입 — supabase/migrations/001_schema.sql 과 1:1 대응
+// 스키마 변경 시 이 파일도 함께 수정할 것
+
+export type OrderType = 'fixed' | 'customer_bid' | 'quote_request';
+export type OrderStatus = 'pending' | 'assigned' | 'in_progress' | 'completed' | 'cancelled' | 'disputed';
+export type PaymentMethod = 'vietqr' | 'momo' | 'bm' | 'cash';
+export type PaymentStatus = 'held' | 'completed' | 'refunded';
+export type UserRole = 'customer' | 'technician' | 'admin';
+export type TechnicianStatus = 'pending' | 'active' | 'suspended';
+export type QuotationStatus = 'submitted' | 'accepted' | 'rejected';
+export type WarrantyStatus = 'active' | 'claimed' | 'closed';
+export type DisputeStatus = 'open' | 'investigating' | 'resolved';
+
+export interface DbUser {
+  uid: string;
+  role: UserRole;
+  name: string;
+  phone: string;
+  lang: string;
+  created_at: string;
+}
+
+export interface TechnicianProfile {
+  uid: string;
+  status: TechnicianStatus;
+  skills: string[];
+  documents: Record<string, string>;
+  rating: number;
+  rating_count: number;
+}
+
+export interface ServiceCategory {
+  id: string;
+  name_ko: string;
+  name_vi: string;
+  name_en: string;
+  icon: string;
+}
+
+export interface ServiceProduct {
+  id: string;
+  category_id: string;
+  name_ko: string;
+  name_vi: string;
+  base_price: number;
+  description: string;
+}
+
+export interface ServiceOrder {
+  id: string;
+  customer_uid: string;
+  technician_uid: string | null;
+  category_id: string;
+  product_id: string | null;
+  order_type: OrderType;
+  status: OrderStatus;
+  address: string;
+  scheduled_at: string;
+  photos_before: string[];
+  photos_after: string[];
+  note: string;
+  created_at: string;
+}
+
+export interface Quotation {
+  id: string;
+  order_id: string;
+  technician_uid: string;
+  price: number;
+  duration_min: number;
+  note: string;
+  status: QuotationStatus;
+}
+
+export interface Payment {
+  id: string;
+  order_id: string;
+  amount: number;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  paid_at: string;
+}
+
+export interface Settlement {
+  id: string;
+  order_id: string;
+  technician_uid: string;
+  gross_amount: number;
+  fee_rate: number;
+  net_amount: number;
+  settled_at: string;
+}
+
+export interface Warranty {
+  id: string;
+  order_id: string;
+  expires_at: string;
+  status: WarrantyStatus;
+}
+
+export interface Dispute {
+  id: string;
+  order_id: string;
+  reason: string;
+  status: DisputeStatus;
+  resolved_at: string | null;
+}
+
+export interface Message {
+  id: string;
+  order_id: string;
+  sender_uid: string;
+  content: string;
+  translated_content: string | null;
+  created_at: string;
+}
+
+// 관리자 설정 (BM→VND 환산율 등) — key/value 단일 테이블
+export interface ServiceSetting {
+  key: string;
+  value: string;
+}
+
+export interface Database {
+  users: DbUser;
+  technician_profiles: TechnicianProfile;
+  service_categories: ServiceCategory;
+  service_products: ServiceProduct;
+  service_orders: ServiceOrder;
+  quotations: Quotation;
+  payments: Payment;
+  settlements: Settlement;
+  warranties: Warranty;
+  disputes: Dispute;
+  messages: Message;
+  service_settings: ServiceSetting;
+}
