@@ -36,6 +36,9 @@ export default function OrderForm({
   const [scheduledAt, setScheduledAt] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // createOrder 가 끝나면 훅의 잠금이 풀려 버튼이 다시 활성화된다. 라우팅이
+  // 끝나기 전의 두 번째 탭이 두 번째 주문을 만들지 않도록 따로 잠근다.
+  const [submitted, setSubmitted] = useState(false);
 
   const categoryProducts = useMemo(
     () => products.filter((p) => p.category_id === categoryId),
@@ -45,11 +48,12 @@ export default function OrderForm({
   const selectedProduct = categoryProducts.find((p) => p.id === productId) ?? null;
 
   const canSubmit =
-    !submitting && categoryId !== '' && productId !== '' && address.trim() !== '' && scheduledAt !== '';
+    !submitting && !submitted && categoryId !== '' && productId !== '' && address.trim() !== '' && scheduledAt !== '';
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setError(null);
+    setSubmitted(true);
     try {
       const order = await createOrder({
         category_id: categoryId,
@@ -62,6 +66,7 @@ export default function OrderForm({
       onSuccess(order);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      setSubmitted(false);
     }
   };
 
@@ -183,7 +188,7 @@ export default function OrderForm({
         className="w-full rounded-2xl py-3.5 text-sm font-extrabold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         style={{ background: 'var(--color-primary)' }}
       >
-        {submitting
+        {submitting || submitted
           ? L(locale, '처리 중…', 'Đang xử lý…', 'Processing…')
           : L(locale, '주문하고 결제하기 →', 'Đặt & thanh toán →', 'Order & Pay →')}
       </button>

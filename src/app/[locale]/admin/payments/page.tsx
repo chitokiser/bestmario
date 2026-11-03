@@ -217,9 +217,16 @@ export default function AdminPaymentsPage({ params }: { params: Promise<{ locale
         </h2>
         <p className="text-[11px] mb-2 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
           {t(
-            '현금·이체 결제는 입금을 확인한 뒤 확정해 주세요. 고객이 작업 완료를 승인하면 남은 보관 건은 자동으로 확정됩니다.',
-            'Với tiền mặt/chuyển khoản, hãy xác nhận sau khi nhận được tiền. Khi khách xác nhận hoàn thành, phần còn lại tự động hoàn tất.',
-            'Confirm cash and transfer payments once the money arrives. Remaining held payments complete automatically when the customer approves the work.'
+            '이체·지갑 결제는 반드시 고객이 작업 완료를 승인하기 전에 입금을 확정해 주세요. 승인 시점에 보관 중인 비현금 결제는 정산 금액에 포함되지 않습니다. 현금 결제는 기술자가 현장에서 직접 수령하므로 정산 대상이 아니며, 수수료는 별도로 회수해야 합니다.',
+            'Hãy xác nhận chuyển khoản/ví TRƯỚC khi khách xác nhận hoàn thành — phần còn ở trạng thái giữ sẽ không được tính vào thanh toán. Tiền mặt do kỹ thuật viên nhận trực tiếp nên không nằm trong thanh toán; phí phải thu riêng.',
+            'Confirm transfer and wallet payments BEFORE the customer approves completion — anything still held at that moment is excluded from the settlement. Cash is collected on site by the technician, so it is not settled and the fee must be collected separately.'
+          )}
+        </p>
+        <p className="text-[11px] mb-2 leading-relaxed font-semibold" style={{ color: '#D32F2F' }}>
+          {t(
+            '※ "환불 처리"는 Supabase 기록만 바꿉니다. BM 결제는 BestClub 포인트가 자동으로 복구되지 않으므로 별도로 환불해야 합니다.',
+            '※ "Hoàn tiền" chỉ đổi bản ghi trong Supabase. Điểm BM của BestClub không tự hoàn lại — phải xử lý riêng.',
+            '※ "Mark refunded" only changes the Supabase record. BM points in BestClub are not returned automatically and must be refunded separately.'
           )}
         </p>
 

@@ -75,10 +75,13 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ lo
     setError(null);
     setMessage(null);
     try {
-      const { error: profErr } = await supabase.from('technician_profiles').upsert(
-        { uid: user.uid, status: profile?.status ?? 'pending', skills },
-        { onConflict: 'uid' }
-      );
+      // upsert 를 쓰면 안 된다: Postgres 는 충돌 해결 전에 INSERT 정책의
+      // WITH CHECK(status='pending') 를 제안 행에 적용하므로, 이미 승인된
+      // (status='active') 기술자의 저장이 RLS 오류로 거부된다.
+      // status 는 관리자만 바꿀 수 있으니 클라이언트가 보내지도 않는다.
+      const { error: profErr } = profile
+        ? await supabase.from('technician_profiles').update({ skills }).eq('uid', user.uid)
+        : await supabase.from('technician_profiles').insert({ uid: user.uid, status: 'pending', skills });
       if (profErr) throw new Error(profErr.message);
 
       const { error: userErr } = await supabase
@@ -114,10 +117,11 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ lo
 
       const documents = { ...(profile?.documents ?? {}), [kind]: path };
 
-      const { error: profErr } = await supabase.from('technician_profiles').upsert(
-        { uid: user.uid, status: profile?.status ?? 'pending', skills, documents },
-        { onConflict: 'uid' }
-      );
+      const { error: profErr } = profile
+        ? await supabase.from('technician_profiles').update({ documents }).eq('uid', user.uid)
+        : await supabase
+            .from('technician_profiles')
+            .insert({ uid: user.uid, status: 'pending', skills, documents });
       if (profErr) throw new Error(profErr.message);
 
       setMessage(t('서류를 등록했습니다.', 'Đã tải giấy tờ.', 'Document uploaded.'));

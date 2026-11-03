@@ -73,12 +73,37 @@ export default function PaymentSheet({
         amount: amt,
         method: m,
         status: 'held',
-        idempotency_key: `${orderId}:${m}`,
+        // 시도마다 다른 키를 쓴다. `${orderId}:${method}` 로 고정하면 부분 실패 후
+        // 재시도나 환불 후 재결제가 unique 충돌로 영구히 막힌다. 중복 결제는
+        // validate_payment_amount 트리거의 주문 금액 상한이 막는다.
+        idempotency_key: `${orderId}:${m}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
       });
       if (err) throw new Error(err.message);
     },
     [supabase, orderId]
   );
+
+  /** Firebase callable 오류를 읽을 수 있는 문구로 바꾼다 (잔액 부족이 가장 흔하다) */
+  const bmErrorMessage = (e: unknown): string => {
+    const raw = e instanceof Error ? e.message : String(e);
+    if (/insufficient|balance|부족|not enough/i.test(raw)) {
+      return L(
+        locale,
+        'BM 잔액이 부족합니다. 혼합 결제를 선택하거나 다른 수단을 이용해 주세요.',
+        'Số dư BM không đủ. Hãy chọn thanh toán kết hợp hoặc phương thức khác.',
+        'Not enough BM balance. Use a mixed payment or another method.'
+      );
+    }
+    if (/not-found|NOT_FOUND|internal/i.test(raw)) {
+      return L(
+        locale,
+        `BM 결제 서버에 연결할 수 없습니다. 다른 결제 수단을 이용해 주세요. (${raw})`,
+        `Không kết nối được máy chủ BM. Hãy dùng phương thức khác. (${raw})`,
+        `Could not reach the BM payment server. Please use another method. (${raw})`
+      );
+    }
+    return raw;
+  };
 
   const handlePay = async () => {
     if (processing) return;
@@ -107,7 +132,12 @@ export default function PaymentSheet({
         }
 
         // 1) BM 차감 (Firebase) — 반드시 먼저. 실패 시 payments 레코드를 만들지 않는다.
-        await callPayServiceJobEscrow(MERCHANT_ID, orderId, bmPortion);
+        try {
+          await callPayServiceJobEscrow(MERCHANT_ID, orderId, bmPortion);
+        } catch (e) {
+          setError(bmErrorMessage(e));
+          return;
+        }
 
         // 2) 차감 성공 후에만 Supabase 결제 기록
         try {
@@ -125,9 +155,22 @@ export default function PaymentSheet({
           return;
         }
 
-        // 3) 혼합 결제 잔액
+        // 3) 혼합 결제 잔액. BM 분은 이미 기록되었으므로, 여기서 실패하면
+        //    "처음부터 다시"가 아니라 "잔액만 더 결제" 로 안내해야 한다.
         if (bmRemain > 0) {
-          await insertPayment(remainMethod, bmRemain);
+          try {
+            await insertPayment(remainMethod, bmRemain);
+          } catch (e) {
+            setCritical(
+              L(
+                locale,
+                `BM ${formatVND(bmPortion)}은 정상 결제되었지만 잔액 ${formatVND(bmRemain)}의 결제 기록에 실패했습니다. 페이지를 새로고침해 잔액만 다시 결제해 주세요. (${e instanceof Error ? e.message : String(e)})`,
+                `Đã thanh toán ${formatVND(bmPortion)} BM nhưng chưa ghi được phần còn lại ${formatVND(bmRemain)}. Hãy tải lại trang và thanh toán phần còn lại.`,
+                `${formatVND(bmPortion)} in BM was paid, but the remaining ${formatVND(bmRemain)} failed to record. Reload the page and pay only the remainder.`
+              )
+            );
+            return;
+          }
         }
       } else {
         await insertPayment(method, amount);

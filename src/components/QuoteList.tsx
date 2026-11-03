@@ -70,12 +70,13 @@ export default function QuoteList({
         <p className="text-sm font-bold mb-1" style={{ color: 'var(--color-text)' }}>
           {L(locale, '아직 접수된 견적이 없습니다', 'Chưa có báo giá nào', 'No quotes yet')}
         </p>
+        {/* 알림 기능은 Phase 2 이므로 "알려드립니다" 라고 약속하지 않는다 */}
         <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
           {L(
             locale,
-            '기술자가 견적을 제출하면 알려드립니다. 보통 1~24시간이 걸리며, 최대 5건까지 받습니다.',
-            'Chúng tôi sẽ thông báo khi có báo giá. Thường mất 1~24 giờ, tối đa 5 báo giá.',
-            'We will notify you when a technician submits a quote. This usually takes 1–24 hours, up to 5 quotes.'
+            '기술자 견적은 보통 1~24시간 안에 접수되며 최대 5건까지 받습니다. 이 화면을 다시 열어 확인해 주세요. 기다리지 않으려면 아래에서 주문을 취소할 수 있습니다.',
+            'Báo giá thường đến trong 1~24 giờ, tối đa 5 báo giá. Hãy mở lại trang này để xem. Nếu không muốn chờ, bạn có thể hủy đơn ở dưới.',
+            'Quotes usually arrive within 1–24 hours, up to 5 of them. Reopen this page to check. If you would rather not wait, you can cancel the order below.'
           )}
         </p>
       </div>

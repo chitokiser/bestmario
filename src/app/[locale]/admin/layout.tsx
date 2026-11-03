@@ -52,9 +52,9 @@ export default function AdminLayout({
               ? t('먼저 홈에서 로그인해 주세요.', 'Hãy đăng nhập ở trang chủ trước.', 'Please log in from the home page first.')
               : role === null
                 ? t(
-                    'Supabase users 테이블에 이 계정의 행이 없습니다. 홈에서 다시 로그인하면 생성됩니다.',
-                    'Không có bản ghi cho tài khoản này trong bảng users của Supabase. Hãy đăng nhập lại ở trang chủ.',
-                    'There is no row for this account in the Supabase users table. Log in again from the home page.'
+                    '계정 역할을 읽지 못했습니다. ① Supabase users 테이블에 이 계정의 행이 없는 경우 — 홈에서 다시 로그인하면 생성됩니다. ② Supabase 설정이 끝나지 않은 경우 — 프로젝트 생성, Third Party Auth(Firebase) 등록, 001~003 마이그레이션 적용 여부를 확인해 주세요.',
+                    'Không đọc được vai trò. ① Chưa có bản ghi trong bảng users của Supabase — hãy đăng nhập lại ở trang chủ. ② Supabase chưa cấu hình xong — kiểm tra project, Third Party Auth (Firebase) và migration 001~003.',
+                    'Could not read the account role. (1) No row for this account in the Supabase users table — log in again from the home page. (2) Supabase setup is incomplete — check the project, Third Party Auth (Firebase), and migrations 001–003.'
                   )
                 : t(
                     `현재 역할은 '${role}' 입니다. 관리자 권한은 자가 설정할 수 없습니다.`,

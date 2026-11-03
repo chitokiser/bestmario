@@ -56,8 +56,12 @@ insert into service_settings (key, value) values
 on conflict (key) do nothing;
 
 -- ── 최초 관리자 지정 (수동) ─────────────────────────────────────────────
--- 아래 주석을 해제하고 <FIREBASE_UID> 를 관리자 Firebase uid 로 바꿔 실행한다.
--- Firestore users/<uid> 문서에도 role: 'admin' 을 같이 설정해야 /admin 가드를 통과한다.
+-- 아래 주석을 해제하고 <FIREBASE_UID> 를 관리자 Firebase uid 로 바꿔
+-- Supabase SQL Editor 에서 실행한다. uid 는 /admin 접근 시 화면에 표시된다.
+--
+-- role 은 Supabase users 테이블만 보므로 Firestore 쪽에는 아무것도 넣지 않는다.
+-- SQL Editor 에는 JWT 가 없고 guard_user_role 트리거가 그 경로를 통과시키므로
+-- 이 UPDATE 가 정상 동작한다 (앱에서는 admin 자가 승격이 여전히 막혀 있다).
 --
 -- insert into users (uid, role, name, lang)
 --   values ('<FIREBASE_UID>', 'admin', '관리자', 'ko')

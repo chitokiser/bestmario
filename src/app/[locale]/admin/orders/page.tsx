@@ -89,6 +89,33 @@ export default function AdminOrdersPage({ params }: { params: Promise<{ locale: 
     }
   };
 
+  // 고객이 72시간 내 완료 승인을 하지 않은 주문의 수동 완료 (스펙 §5 공통 완료 처리).
+  // Phase 1 에는 자동 승인 잡이 없으므로 이 버튼이 그 역할을 한다.
+  // is_admin() 이므로 guard_order_transition 을 통과하고,
+  // generate_settlement 트리거가 정산·워런티를 만든다.
+  const handleForceComplete = async (orderId: string) => {
+    if (acting) return;
+    setActing(orderId);
+    setError(null);
+    try {
+      const { data, error: err } = await supabase
+        .from('service_orders')
+        .update({ status: 'completed' })
+        .eq('id', orderId)
+        .eq('status', 'in_progress')
+        .select('id');
+      if (err) throw new Error(err.message);
+      if (!data || data.length === 0) {
+        throw new Error(t('이미 처리된 주문입니다.', 'Đơn đã được xử lý.', 'Already processed.'));
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setActing(null);
+    }
+  };
+
   const handleCancel = async (orderId: string) => {
     if (acting) return;
     setActing(orderId);
@@ -204,6 +231,26 @@ export default function AdminOrdersPage({ params }: { params: Promise<{ locale: 
                         </button>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {o.status === 'in_progress' && (
+                  <div className="mt-3">
+                    <button
+                      onClick={() => void handleForceComplete(o.id)}
+                      disabled={acting !== null}
+                      className="w-full rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                      style={{ background: '#388E3C' }}
+                    >
+                      {t('강제 완료 처리', 'Hoàn tất thủ công', 'Force complete')}
+                    </button>
+                    <p className="mt-1 text-[11px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                      {t(
+                        '고객이 72시간 내 승인하지 않은 경우에만 사용하세요. 정산과 30일 워런티가 즉시 생성되며, BM 에스크로는 자동으로 해제되지 않습니다.',
+                        'Chỉ dùng khi khách không xác nhận trong 72 giờ. Thanh toán và bảo hành 30 ngày được tạo ngay; ký quỹ BM KHÔNG tự giải ngân.',
+                        'Use only when the customer has not approved within 72 hours. The settlement and 30-day warranty are created immediately; the BM escrow is NOT released automatically.'
+                      )}
+                    </p>
                   </div>
                 )}
 
