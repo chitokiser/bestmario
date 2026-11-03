@@ -28,6 +28,8 @@
     "login": "Đăng nhập",
     "logout": "Đăng xuất",
     "join_processing": "Đang xử lý...",
-    "no_items": "Chưa có dịch vụ nào"
+    "no_items": "Chưa có dịch vụ nào",
+    "nav_services": "Dịch vụ",
+    "nav_mypage": "Trang của tôi"
   }
 }

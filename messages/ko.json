@@ -28,6 +28,8 @@
     "login": "로그인",
     "logout": "로그아웃",
     "join_processing": "처리 중...",
-    "no_items": "등록된 서비스가 없습니다"
+    "no_items": "등록된 서비스가 없습니다",
+    "nav_services": "서비스",
+    "nav_mypage": "마이페이지"
   }
 }

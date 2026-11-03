@@ -491,7 +491,7 @@ export default function LandingClient({ locale }: { locale: string }) {
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-bg)' }}>
       {/* ── Header ── */}
       <header
-        className="sticky top-0 z-40 flex items-center justify-between px-4 py-3 gap-2"
+        className="sticky top-0 z-40 flex flex-wrap items-center justify-between px-4 py-3 gap-2"
         style={{ background: 'var(--color-primary)' }}
       >
         {/* 로고는 빨간 'BEST' + 검정 'MARIO' 조합이라 흰 배경용이다.
@@ -543,6 +543,22 @@ export default function LandingClient({ locale }: { locale: string }) {
             ))}
           </div>
         </div>
+
+        {/* 상단 메뉴: 로고·지갑·언어 줄이 이미 가득 차서 별도 줄로 둔다 */}
+        <nav aria-label="main" className="flex w-full gap-2">
+          <button
+            onClick={() => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })}
+            className="flex-1 rounded-lg bg-white/15 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/25 active:scale-95"
+          >
+            {tCommon('nav_services')}
+          </button>
+          <button
+            onClick={() => router.push(`/${locale}/orders`)}
+            className="flex-1 rounded-lg bg-white/15 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/25 active:scale-95"
+          >
+            {tCommon('nav_mypage')}
+          </button>
+        </nav>
       </header>
 
       {/* ── Hero ── */}

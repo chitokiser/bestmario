@@ -28,6 +28,8 @@
     "login": "Log in",
     "logout": "Log out",
     "join_processing": "Processing...",
-    "no_items": "No services available"
+    "no_items": "No services available",
+    "nav_services": "Services",
+    "nav_mypage": "My Page"
   }
 }
