@@ -9,6 +9,7 @@ import { useMerchant } from '@/hooks/useMerchant';
 import { useWebzines } from '@/hooks/useWebzines';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useLogin } from '@/hooks/useLogin';
+import TopTechnicians from '@/components/TopTechnicians';
 import { useOrders } from '@/hooks/useOrders';
 
 const MERCHANT_ID = process.env.NEXT_PUBLIC_BESTMARIO_MERCHANT_ID || undefined;
@@ -692,6 +693,9 @@ export default function LandingClient({ locale }: { locale: string }) {
           </div>
         )}
       </section>
+
+      {/* ── 미션 랭킹 ── */}
+      <TopTechnicians locale={locale} />
 
       {/* ── Trust badges ── */}
       <section className="px-4 py-4 flex justify-center">
