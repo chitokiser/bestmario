@@ -8,6 +8,7 @@ import { callReleaseEscrow } from '@/lib/firebase';
 import { useSupabase } from '@/hooks/useSupabase';
 import { useAuthState } from '@/hooks/useAuthState';
 import PushBanner from '@/components/PushBanner';
+import OrderContact from '@/components/OrderContact';
 import { formatDateTime, formatVND, localizedName } from '@/lib/format';
 import type { Payment, ServiceCategory, ServiceOrder, Warranty } from '@/types/supabase';
 import type { TechnicianPublic } from '@/hooks/useQuotations';
@@ -234,6 +235,13 @@ export default function OrderDetailPage({
           </p>
         )}
       </div>
+
+      {/* 용역 성사(기술자 배정) 후: 잘로·전화·채팅 */}
+      {order.technician_uid && order.status !== 'cancelled' && (
+        <div className="mb-4">
+          <OrderContact orderId={order.id} locale={locale} />
+        </div>
+      )}
 
       {/* 견적 목록 (quote_request) */}
       {order.order_type === 'quote_request' && (

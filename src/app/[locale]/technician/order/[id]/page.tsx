@@ -3,6 +3,7 @@
 import { use, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import OrderStatusBadge from '@/components/OrderStatusBadge';
+import OrderContact from '@/components/OrderContact';
 import { useTechnicianOrders } from '@/hooks/useTechnicianOrders';
 import { formatDateTime } from '@/lib/format';
 
@@ -101,6 +102,8 @@ export default function TechnicianOrderPage({
           </p>
         )}
       </div>
+
+      {order.status !== 'cancelled' && <OrderContact orderId={order.id} locale={locale} />}
 
       {error && <p className="text-xs font-semibold" style={{ color: '#D32F2F' }}>{error}</p>}
 

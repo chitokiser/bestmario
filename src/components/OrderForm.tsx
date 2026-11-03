@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useOrders } from '@/hooks/useOrders';
 import { useSupabase } from '@/hooks/useSupabase';
+import { useAuthState } from '@/hooks/useAuthState';
 import { formatVND, localizedName } from '@/lib/format';
 import type { ServiceCategory, ServiceOrder, ServiceProduct } from '@/types/supabase';
 
@@ -31,12 +32,15 @@ export default function OrderForm({
 }) {
   const { createOrder, submitting } = useOrders();
   const supabase = useSupabase();
+  const { user } = useAuthState();
 
   const [categoryId, setCategoryId] = useState('');
   const [productId, setProductId] = useState('');
   const [address, setAddress] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
   const [note, setNote] = useState('');
+  // 기술자가 배정되면 서로 연락(잘로·전화)해야 하므로 연락처를 받는다. 계정에 저장된 번호가 있으면 채워 둔다.
+  const [phone, setPhone] = useState('');
   // 정찰가로 바로 예약 / 희망가 제시 (단순 작업으로 표시된 항목에서만)
   const [mode, setMode] = useState<'fixed' | 'bid'>('fixed');
   const [offer, setOffer] = useState('');
@@ -52,6 +56,17 @@ export default function OrderForm({
   );
 
   const selectedProduct = categoryProducts.find((p) => p.id === productId) ?? null;
+
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    void supabase.from('users').select('phone').eq('uid', user.uid).maybeSingle().then(({ data }) => {
+      if (alive && data?.phone) setPhone((prev) => prev || (data.phone as string));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [supabase, user]);
 
   const bidAvailable = selectedProduct?.bid_allowed === true;
   const isBid = mode === 'bid' && bidAvailable;
@@ -75,7 +90,7 @@ export default function OrderForm({
   const offerOk = !isBid || (Number.isInteger(offerNum) && offerNum > 0 && (floor === null || offerNum >= floor));
 
   const canSubmit =
-    !submitting && !submitted && categoryId !== '' && productId !== '' && address.trim() !== '' && scheduledAt !== '' &&
+    !submitting && !submitted && categoryId !== '' && productId !== '' && address.trim() !== '' && scheduledAt !== '' && phone.trim() !== '' &&
     (!isBid || (offer !== '' && offerOk));
 
   const handleSubmit = async () => {
@@ -83,6 +98,11 @@ export default function OrderForm({
     setError(null);
     setSubmitted(true);
     try {
+      // 연락처는 계정에 저장한다 (배정 후 상대방에게 order_contact 로만 공개된다)
+      if (user) {
+        const { error: phoneErr } = await supabase.from('users').update({ phone: phone.trim() }).eq('uid', user.uid);
+        if (phoneErr) throw new Error(phoneErr.message);
+      }
       const order = await createOrder({
         category_id: categoryId,
         product_id: productId,
@@ -217,6 +237,25 @@ export default function OrderForm({
           className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
           style={FIELD_STYLE}
         />
+      </div>
+
+      {/* 연락처 */}
+      <div>
+        <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
+          {L(locale, '연락처 (잘로·전화)', 'Số điện thoại (Zalo/gọi)', 'Phone (Zalo / call)')}
+        </label>
+        <input
+          type="tel"
+          inputMode="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="09xx xxx xxx"
+          className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+          style={FIELD_STYLE}
+        />
+        <p className="mt-1 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+          {L(locale, '기술자가 배정된 뒤에만 상대방에게 공개됩니다.', 'Chỉ hiển thị cho kỹ thuật viên sau khi được phân công.', 'Shared with the technician only after assignment.')}
+        </p>
       </div>
 
       {/* 일시 */}

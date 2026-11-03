@@ -2,6 +2,7 @@
 //   (kind 없음) 새 주문      → 그 분야를 고른 승인(active) 기술자
 //   assigned    기술자 수락  → 주문한 고객
 //   quote       새 견적 도착 → 주문한 고객
+//   message     새 채팅      → 보낸 사람의 상대방
 // DB 트리거가 호출한다. 공유 비밀 헤더로만 접근을 허용한다.
 import webpush from 'npm:web-push@3.6.7';
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -50,7 +51,7 @@ Deno.serve(async (req) => {
     return new Response('forbidden', { status: 403 });
   }
 
-  const { order_id, kind: eventKind, quotation_id } = await req.json().catch(() => ({}));
+  const { order_id, kind: eventKind, quotation_id, message_id } = await req.json().catch(() => ({}));
   if (!order_id) return new Response('bad request', { status: 400 });
 
   const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
@@ -80,6 +81,25 @@ Deno.serve(async (req) => {
     uids = [order.customer_uid as string];
     const price = won(quote?.price as number | undefined);
     build = (l, cat) => ({ ...CUSTOMER.quote[l](cat, price), url: `/${l}/orders/${order.id}` });
+  } else if (eventKind === 'message') {
+    // 새 채팅 메시지 → 보낸 사람의 상대방
+    const { data: msg } = await sb
+      .from('messages')
+      .select('sender_uid, content')
+      .eq('id', message_id)
+      .maybeSingle();
+    if (!msg) return Response.json({ sent: 0, reason: 'no message' });
+    const toCustomer = msg.sender_uid !== order.customer_uid;
+    const recipient = toCustomer ? (order.customer_uid as string) : (order.technician_uid as string | null);
+    if (!recipient) return Response.json({ sent: 0, reason: 'no recipient' });
+    uids = [recipient];
+    const { data: sender } = await sb.from('users').select('name').eq('uid', msg.sender_uid).maybeSingle();
+    const preview = String(msg.content).slice(0, 80);
+    build = (l, cat) => ({
+      title: `${(sender?.name as string) || cat} 💬`,
+      body: preview,
+      url: toCustomer ? `/${l}/orders/${order.id}` : `/${l}/technician/order/${order.id}`,
+    });
   } else {
     // 새 주문 → 이 분야를 고른 승인 기술자
     if (order.status !== 'pending' || order.technician_uid) {
@@ -115,7 +135,7 @@ Deno.serve(async (req) => {
   let sent = 0;
   const dead: string[] = [];
   // 같은 주문의 같은 이벤트끼리만 교체되도록 tag 에 이벤트 종류를 넣는다
-  const tag = `${eventKind ?? 'new'}-${order.id}${quotation_id ? `-${quotation_id}` : ''}`;
+  const tag = `${eventKind ?? 'new'}-${order.id}${quotation_id ? `-${quotation_id}` : ''}${message_id ? `-${message_id}` : ''}`;
 
   await Promise.all(
     (subs ?? []).map(async (s) => {
