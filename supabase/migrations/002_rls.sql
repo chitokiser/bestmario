@@ -341,10 +341,19 @@ create policy order_photos_read on storage.objects
   for select to authenticated, anon
   using (bucket_id = 'order-photos');
 
+-- 경로는 "<order_id>/<파일명>" 이어야 하고, 그 주문의 고객 또는 배정된 기술자만 올린다.
+-- owner_id 는 Third Party Auth 환경에서 값이 보장되지 않으므로 경로로 판정한다.
 drop policy if exists order_photos_write on storage.objects;
 create policy order_photos_write on storage.objects
   for insert to authenticated
-  with check (bucket_id = 'order-photos' and owner_id = firebase_uid());
+  with check (
+    bucket_id = 'order-photos'
+    and (storage.foldername(name))[1] ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    and (
+      owns_order(((storage.foldername(name))[1])::uuid)
+      or assigned_to_order(((storage.foldername(name))[1])::uuid)
+    )
+  );
 
 -- documents: 경로 첫 세그먼트가 본인 uid 인 파일만 (예: "<uid>/id_card.jpg")
 drop policy if exists documents_own_read on storage.objects;
