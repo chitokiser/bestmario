@@ -57,6 +57,67 @@ create trigger on_order_completed
   after update on service_orders
   for each row execute function generate_settlement();
 
+-- ── 결제 금액 서버 검증 ─────────────────────────────────────────────────
+-- 스펙 §10 "결제·정산은 서버 측 검증 (클라이언트 금액 직접 수신 금지)".
+-- RLS 로는 컬럼 값을 검증할 수 없으므로 트리거로 막는다.
+
+-- 주문의 확정 금액: 선택된 견적가 > 고정가 상품가 > 0(미확정)
+create or replace function order_expected_amount(p_order_id uuid)
+returns int
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (select q.price
+       from quotations q
+      where q.order_id = p_order_id and q.status = 'accepted'
+      limit 1),
+    (select p.base_price
+       from service_orders o
+       join service_products p on p.id = o.product_id
+      where o.id = p_order_id),
+    0
+  )
+$$;
+
+create or replace function validate_payment_amount()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_expected int;
+  v_paid     int;
+begin
+  v_expected := order_expected_amount(new.order_id);
+
+  if v_expected <= 0 then
+    raise exception '주문 금액이 확정되지 않았습니다 (고정가 상품 또는 선택된 견적이 없음)';
+  end if;
+
+  select coalesce(sum(amount), 0) into v_paid
+    from payments
+   where order_id = new.order_id
+     and status in ('held', 'completed');
+
+  -- 혼합 결제(BM + VietQR 등)는 합계가 주문 금액을 넘지 않아야 한다
+  if v_paid + new.amount > v_expected then
+    raise exception '결제 금액이 주문 금액을 초과합니다 (주문 %, 기결제 %, 요청 %)',
+      v_expected, v_paid, new.amount;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_payment_insert on payments;
+create trigger on_payment_insert
+  before insert on payments
+  for each row execute function validate_payment_amount();
+
 -- ── role 자가 변경 제한 ─────────────────────────────────────────────────
 -- users 의 UPDATE 정책은 본인 행을 허용하므로, role 컬럼만 별도로 막는다.
 -- 자가 변경은 customer → technician 만 허용 (관리자 승인은 technician_profiles.status).
