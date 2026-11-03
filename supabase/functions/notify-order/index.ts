@@ -14,6 +14,12 @@ const MSG = {
     vi: (cat: string) => ({ title: `Yêu cầu báo giá · ${cat}`, body: 'Có yêu cầu thuộc lĩnh vực của bạn. Hãy tham gia báo giá.' }),
     en: (cat: string) => ({ title: `Quote request · ${cat}`, body: 'A request in your field is open. Join the bidding.' }),
   },
+  // 고객이 가격을 제시한 주문: 금액을 보여 주고 먼저 수락하면 그 가격으로 배정된다
+  offer: {
+    ko: (cat: string, price: string) => ({ title: `제시가 요청 · ${cat}`, body: `고객 제시가 ${price}. 먼저 수락하면 배정됩니다.` }),
+    vi: (cat: string, price: string) => ({ title: `Khách đề xuất giá · ${cat}`, body: `Giá đề xuất ${price}. Nhận đơn trước để được phân công.` }),
+    en: (cat: string, price: string) => ({ title: `Price offer · ${cat}`, body: `Customer offers ${price}. Accept first to get assigned.` }),
+  },
 } as const;
 
 type Lang = 'ko' | 'vi' | 'en';
@@ -31,7 +37,7 @@ Deno.serve(async (req) => {
 
   const { data: order } = await sb
     .from('service_orders')
-    .select('id, category_id, order_type, status, technician_uid')
+    .select('id, category_id, order_type, status, technician_uid, offered_price')
     .eq('id', order_id)
     .maybeSingle();
   if (!order || order.status !== 'pending' || order.technician_uid) {
@@ -65,7 +71,8 @@ Deno.serve(async (req) => {
     Deno.env.get('VAPID_PRIVATE')!,
   );
 
-  const kind = order.order_type === 'fixed' ? 'fixed' : 'bid';
+  const kind = order.order_type === 'fixed' ? 'fixed' : order.order_type === 'customer_bid' ? 'offer' : 'bid';
+  const price = order.offered_price ? `${Number(order.offered_price).toLocaleString('vi-VN')}₫` : '';
   let sent = 0;
   const dead: string[] = [];
 
@@ -74,7 +81,7 @@ Deno.serve(async (req) => {
       const l = langOf.get(s.uid as string) ?? 'vi';
       const catName = category ? (category[`name_${l}` as 'name_ko'] as string) : '';
       const payload = JSON.stringify({
-        ...MSG[kind][l](catName),
+        ...(kind === 'offer' ? MSG.offer[l](catName, price) : MSG[kind][l](catName)),
         url: `/${l}/technician`,
         tag: `order-${order.id}`,
       });

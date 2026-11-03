@@ -49,6 +49,7 @@ export interface ServiceProduct {
   name_vi: string;
   base_price: number;
   description: string;
+  bid_allowed: boolean;
 }
 
 export interface ServiceOrder {
@@ -64,6 +65,7 @@ export interface ServiceOrder {
   photos_before: string[];
   photos_after: string[];
   note: string;
+  offered_price: number | null;
   created_at: string;
 }
 

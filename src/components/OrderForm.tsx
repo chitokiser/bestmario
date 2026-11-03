@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useOrders } from '@/hooks/useOrders';
+import { useSupabase } from '@/hooks/useSupabase';
 import { formatVND, localizedName } from '@/lib/format';
 import type { ServiceCategory, ServiceOrder, ServiceProduct } from '@/types/supabase';
 
@@ -29,12 +30,17 @@ export default function OrderForm({
   onSuccess: (order: ServiceOrder) => void;
 }) {
   const { createOrder, submitting } = useOrders();
+  const supabase = useSupabase();
 
   const [categoryId, setCategoryId] = useState('');
   const [productId, setProductId] = useState('');
   const [address, setAddress] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
   const [note, setNote] = useState('');
+  // 정찰가로 바로 예약 / 희망가 제시 (단순 작업으로 표시된 항목에서만)
+  const [mode, setMode] = useState<'fixed' | 'bid'>('fixed');
+  const [offer, setOffer] = useState('');
+  const [floor, setFloor] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   // createOrder 가 끝나면 훅의 잠금이 풀려 버튼이 다시 활성화된다. 라우팅이
   // 끝나기 전의 두 번째 탭이 두 번째 주문을 만들지 않도록 따로 잠근다.
@@ -47,8 +53,30 @@ export default function OrderForm({
 
   const selectedProduct = categoryProducts.find((p) => p.id === productId) ?? null;
 
+  const bidAvailable = selectedProduct?.bid_allowed === true;
+  const isBid = mode === 'bid' && bidAvailable;
+  const offerNum = Number(offer);
+
+  // 하한가는 DB 의 단일 기준(bid_floor_price)에서 읽는다 — 아래 검증은 안내용이고 최종 판단은 DB 가 한다
+  useEffect(() => {
+    if (!productId || !bidAvailable) {
+      setFloor(null);
+      return;
+    }
+    let alive = true;
+    void supabase.rpc('bid_floor_price', { p_product_id: productId }).then(({ data }) => {
+      if (alive) setFloor(typeof data === 'number' ? data : null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [supabase, productId, bidAvailable]);
+
+  const offerOk = !isBid || (Number.isInteger(offerNum) && offerNum > 0 && (floor === null || offerNum >= floor));
+
   const canSubmit =
-    !submitting && !submitted && categoryId !== '' && productId !== '' && address.trim() !== '' && scheduledAt !== '';
+    !submitting && !submitted && categoryId !== '' && productId !== '' && address.trim() !== '' && scheduledAt !== '' &&
+    (!isBid || (offer !== '' && offerOk));
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -58,7 +86,8 @@ export default function OrderForm({
       const order = await createOrder({
         category_id: categoryId,
         product_id: productId,
-        order_type: 'fixed',
+        order_type: isBid ? 'customer_bid' : 'fixed',
+        offered_price: isBid ? offerNum : undefined,
         address: address.trim(),
         scheduled_at: new Date(scheduledAt).toISOString(),
         note: note.trim(),
@@ -97,7 +126,7 @@ export default function OrderForm({
         </label>
         <select
           value={productId}
-          onChange={(e) => setProductId(e.target.value)}
+          onChange={(e) => { setProductId(e.target.value); setMode('fixed'); setOffer(''); }}
           disabled={categoryId === ''}
           className="w-full rounded-xl border px-4 py-3 text-sm outline-none disabled:opacity-50"
           style={FIELD_STYLE}
@@ -121,6 +150,59 @@ export default function OrderForm({
           </p>
         )}
       </div>
+
+      {/* 가격 방식: 단순 작업에서만 희망가 제시를 허용한다 */}
+      {bidAvailable && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2" role="radiogroup">
+            {([
+              ['fixed', L(locale, '정찰가로 예약', 'Đặt giá cố định', 'Fixed price')],
+              ['bid', L(locale, '희망가 제시', 'Đề xuất giá', 'Name your price')],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={mode === key}
+                onClick={() => setMode(key)}
+                className="rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors"
+                style={
+                  mode === key
+                    ? { background: 'var(--color-primary)', borderColor: 'var(--color-primary)', color: '#fff' }
+                    : FIELD_STYLE
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {isBid && (
+            <div>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={floor ?? 1}
+                step={1000}
+                value={offer}
+                onChange={(e) => setOffer(e.target.value)}
+                placeholder={L(locale, '희망 금액 (VND)', 'Số tiền mong muốn (VND)', 'Your price (VND)')}
+                aria-invalid={offer !== '' && !offerOk}
+                className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                style={FIELD_STYLE}
+              />
+              <p className="mt-1.5 text-xs" style={{ color: offer !== '' && !offerOk ? '#D32F2F' : 'var(--color-text-muted)' }}>
+                {floor !== null
+                  ? L(locale,
+                      `최소 ${formatVND(floor)} 이상부터 제시할 수 있어요. 너무 낮으면 기술자가 수락하지 않을 수 있습니다.`,
+                      `Tối thiểu ${formatVND(floor)}. Giá quá thấp có thể không có kỹ thuật viên nhận.`,
+                      `Minimum ${formatVND(floor)}. Very low offers may not get accepted.`)
+                  : L(locale, '먼저 수락한 기술자가 이 금액으로 배정됩니다.', 'Kỹ thuật viên nhận đơn trước sẽ được phân công với mức giá này.', 'The first technician to accept is assigned at this price.')}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 주소 */}
       <div>
@@ -173,7 +255,7 @@ export default function OrderForm({
             {L(locale, '예상 결제 금액', 'Số tiền dự kiến', 'Estimated total')}
           </span>
           <span className="text-lg font-extrabold" style={{ color: 'var(--color-primary)' }}>
-            {formatVND(selectedProduct.base_price)}
+            {formatVND(isBid && offerOk && offer !== '' ? offerNum : selectedProduct.base_price)}
           </span>
         </div>
       )}

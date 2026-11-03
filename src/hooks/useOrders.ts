@@ -12,6 +12,8 @@ export interface CreateOrderInput {
   scheduled_at: string; // ISO 8601
   note?: string;
   photos_before?: string[];
+  /** customer_bid 전용: 고객 희망가(VND). 하한가 검증은 DB 가 한다. */
+  offered_price?: number;
 }
 
 /**
@@ -107,6 +109,7 @@ export function useOrders() {
             scheduled_at: input.scheduled_at,
             photos_before: input.photos_before ?? [],
             note: input.note ?? '',
+            offered_price: input.offered_price ?? null,
           })
           .select()
           .single();

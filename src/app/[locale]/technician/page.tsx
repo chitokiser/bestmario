@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import OrderStatusBadge from '@/components/OrderStatusBadge';
 import { useTechnicianOrders } from '@/hooks/useTechnicianOrders';
 import { useSupabase } from '@/hooks/useSupabase';
-import { formatDateTime, localizedName } from '@/lib/format';
+import { formatDateTime, formatVND, localizedName } from '@/lib/format';
 import type { ServiceCategory, ServiceOrder } from '@/types/supabase';
 
 export default function TechnicianHomePage({ params }: { params: Promise<{ locale: string }> }) {
@@ -62,6 +62,11 @@ export default function TechnicianHomePage({ params }: { params: Promise<{ local
       <p className="mt-0.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>
         📍 {order.address}
       </p>
+      {order.offered_price !== null && (
+        <p className="mt-2 inline-block rounded-lg px-2.5 py-1 text-xs font-extrabold" style={{ background: 'var(--color-primary-bg, #FFEBEE)', color: 'var(--color-primary)' }}>
+          💰 {t('고객 제시가', 'Giá khách đề xuất', 'Customer offer')} {formatVND(order.offered_price)}
+        </p>
+      )}
       {order.note && (
         <p className="mt-2 text-xs whitespace-pre-line leading-relaxed" style={{ color: 'var(--color-text-2, #5c5c6e)' }}>
           {order.note}
