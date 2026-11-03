@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter, usePathname } from 'next/navigation';
 import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth, callMerchantMemberJoin } from '@/lib/firebase';
+import { createSupabaseClient } from '@/lib/supabase';
 import { useUTM } from '@/hooks/useUTM';
 import { useMerchant } from '@/hooks/useMerchant';
 import { useWebzines } from '@/hooks/useWebzines';
@@ -348,16 +349,39 @@ export default function LandingClient({ locale }: { locale: string }) {
   const handleLogin = async () => {
     try {
       const result = await signInWithPopup(auth, new GoogleAuthProvider());
-      if (MERCHANT_ID && result.user) {
-        setJoinLoading(true);
+      if (!result.user) return;
+
+      setJoinLoading(true);
+      try {
+        // Supabase users 행 생성. ignoreDuplicates 이므로 재로그인 시
+        // 기존 role(technician/admin)을 customer 로 덮어쓰지 않는다.
+        const idToken = await result.user.getIdToken();
+        const supabase = createSupabaseClient(idToken);
+        const { error } = await supabase.from('users').upsert(
+          {
+            uid: result.user.uid,
+            role: 'customer',
+            name: result.user.displayName ?? '',
+            phone: result.user.phoneNumber ?? '',
+            lang: locale,
+            created_at: new Date().toISOString(),
+          },
+          { onConflict: 'uid', ignoreDuplicates: true }
+        );
+        if (error) console.error('[supabase] users upsert 실패', error.message);
+      } catch (e) {
+        // Supabase 저장 실패 — 로그인 자체는 유지한다
+        console.error('[supabase] users upsert 예외', e);
+      }
+
+      if (MERCHANT_ID) {
         try {
           await callMerchantMemberJoin(MERCHANT_ID);
         } catch {
           // 멘토 지정 실패 무시
-        } finally {
-          setJoinLoading(false);
         }
       }
+      setJoinLoading(false);
     } catch {
       // 팝업 닫음 또는 취소 무시
     }
