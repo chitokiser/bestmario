@@ -490,10 +490,10 @@ export default function LandingClient({ locale }: { locale: string }) {
       >
         <a href="#" className="flex items-center">
           <Image
-            src="/bestmario-logo.png"
+            src="/bestmario-logo.webp"
             alt="BestMario"
-            width={140}
-            height={47}
+            width={480}
+            height={155}
             priority
             className="h-10 w-auto"
           />
@@ -540,10 +540,7 @@ export default function LandingClient({ locale }: { locale: string }) {
       {/* ── Hero ── */}
       <section
         className="relative overflow-hidden"
-        style={{
-          background: 'linear-gradient(135deg, #B71C1C 0%, #E53935 55%, #FF6F00 100%)',
-          minHeight: '320px',
-        }}
+        style={{ background: 'linear-gradient(160deg, #B71C1C 0%, #E53935 52%, #C62828 100%)' }}
       >
         {/* 배경 원형 장식 */}
         <div
@@ -555,23 +552,56 @@ export default function LandingClient({ locale }: { locale: string }) {
           style={{ width: '200px', height: '200px', background: 'white', transform: 'translate(-60px, 60px)' }}
         />
 
-        {/* Hero 콘텐츠: 텍스트(왼쪽) + 캐릭터(오른쪽) */}
-        <div className="relative flex items-end justify-between px-5 pt-6 pb-0">
-          {/* 왼쪽: 텍스트 */}
-          <div className="flex flex-col gap-3 pb-6 flex-1 min-w-0 pr-2">
+        {/* 네이비 바닥: 캐릭터가 딛고 설 지면이자 아래 지표 바와 이어지는 보조색 */}
+        <div
+          className="absolute inset-x-0 bottom-0 pointer-events-none"
+          style={{
+            height: '160px',
+            background: 'linear-gradient(to top, rgba(19,38,62,1) 0%, rgba(19,38,62,0.88) 25%, rgba(19,38,62,0.45) 60%, rgba(19,38,62,0) 100%)',
+          }}
+        />
+
+        {/* 넓은 화면에서 텍스트와 캐릭터가 양 끝으로 벌어지지 않도록 묶어 가운데 정렬한다 */}
+        <div
+          className="relative mx-auto flex w-full max-w-[680px] items-center"
+          style={{ minHeight: 'clamp(380px, 52vw, 520px)' }}
+        >
+          {/* 캐릭터: 히어로의 주인공. 오른쪽 바닥에 세운다.
+              높이를 영역에 맞추므로 화면이 넓어져도 머리가 잘리지 않는다. */}
+          <div
+            className="absolute right-0 top-0 bottom-0 pointer-events-none select-none"
+            style={{ width: 'min(50%, 290px)' }}
+          >
             <Image
-              src="/bestmario-logo.png"
-              alt="BestMario"
-              width={160}
-              height={53}
+              src="/bestmario-character.webp"
+              alt=""
+              aria-hidden
+              fill
               priority
-              className="h-10 w-auto drop-shadow-md"
+              className="object-contain object-bottom"
+              style={{ filter: 'drop-shadow(0 14px 20px rgba(9,20,34,0.35))' }}
+              sizes="(max-width: 640px) 50vw, 290px"
             />
-            <h1 className="text-2xl font-extrabold text-white tracking-tight leading-tight drop-shadow-sm">
-              {merchantLoading ? 'BestMario' : (merchant?.name ?? 'BestMario')}
+          </div>
+
+          {/* 텍스트: 캐릭터 폭만큼 오른쪽을 비워 둔다 */}
+          <div
+            className="relative flex w-full flex-col gap-3 px-5 pt-7 pb-9"
+            style={{ paddingRight: 'min(44%, 300px)', wordBreak: 'keep-all' }}
+          >
+            {/* 가맹점명이 서비스명과 다를 때만 윗줄에 표기한다 */}
+            {merchant?.name && merchant.name !== t('hero_title') && (
+              <span className="text-[11px] font-bold tracking-[0.18em] uppercase text-white/70">
+                {merchant.name}
+              </span>
+            )}
+
+            <h1 className="text-[28px] font-extrabold text-white tracking-tight leading-[1.1] drop-shadow-sm">
+              {t('hero_title')}
             </h1>
-            <p className="text-white/90 text-xs leading-relaxed max-w-[200px]">
-              {t('tagline')}
+
+            <p className="text-white/90 text-xs leading-relaxed">
+              {t('hero_subtitle')}
             </p>
 
             {btPerVnd ? (
@@ -587,7 +617,8 @@ export default function LandingClient({ locale }: { locale: string }) {
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => openRequestModal()}
-                className="px-4 py-2 rounded-xl bg-white font-bold text-red-600 text-xs shadow-lg hover:shadow-xl active:scale-95 transition-all"
+                className="px-4 py-2.5 rounded-xl bg-white font-bold text-xs shadow-lg hover:shadow-xl active:scale-95 transition-all"
+                style={{ color: 'var(--color-primary)' }}
               >
                 {t('cta_request')}
               </button>
@@ -596,32 +627,24 @@ export default function LandingClient({ locale }: { locale: string }) {
                   const el = document.getElementById('services');
                   el?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="px-4 py-2 rounded-xl border-2 border-white text-white font-bold text-xs hover:bg-white/10 active:scale-95 transition-all"
+                className="px-4 py-2.5 rounded-xl text-white font-bold text-xs active:scale-95 transition-all"
+                style={{ background: 'var(--color-navy)' }}
               >
                 {t('cta_quote')}
               </button>
             </div>
-          </div>
 
-          {/* 오른쪽: 캐릭터 이미지 */}
-          <div className="flex-shrink-0 relative" style={{ width: '150px', height: '210px' }}>
-            <Image
-              src="/bestmario-character.png"
-              alt="BestMario Character"
-              fill
-              priority
-              className="object-contain object-bottom drop-shadow-2xl"
-              sizes="150px"
-            />
+            <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-white/75 font-medium">
+              <li>✔ {t('trust_verified')}</li>
+              <li>✔ {t('trust_warranty')}</li>
+              <li>✔ {t('trust_multilang')}</li>
+            </ul>
           </div>
         </div>
       </section>
 
-      {/* ── Stats bar ── */}
-      <div
-        className="flex justify-around border-b"
-        style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}
-      >
+      {/* ── Stats bar: 히어로의 네이비 바닥을 그대로 이어받는다 ── */}
+      <div className="flex justify-around" style={{ background: 'var(--color-navy-deep)' }}>
         {[
           { num: '13', label: locale === 'vi' ? 'Lĩnh vực' : locale === 'en' ? 'Fields' : '서비스 분야' },
           { num: '160+', label: locale === 'vi' ? 'Hạng mục' : locale === 'en' ? 'Items' : '세부 항목' },
@@ -629,9 +652,9 @@ export default function LandingClient({ locale }: { locale: string }) {
           { num: '10%', label: locale === 'vi' ? 'Tích BT' : locale === 'en' ? 'BT Earn' : 'BT 적립' },
         ].map(({ num, label }) => (
           <div key={label} className="flex-1 text-center py-3 border-r last:border-r-0"
-            style={{ borderColor: 'var(--color-border, #ebebed)' }}>
-            <span className="block text-lg font-extrabold" style={{ color: 'var(--color-primary)' }}>{num}</span>
-            <span className="block text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-muted, #9494a4)' }}>{label}</span>
+            style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
+            <span className="block text-lg font-extrabold text-white">{num}</span>
+            <span className="block text-[10px] font-semibold uppercase tracking-wide text-white/55">{label}</span>
           </div>
         ))}
       </div>
