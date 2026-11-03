@@ -9,6 +9,7 @@ import { useSupabase } from '@/hooks/useSupabase';
 import { useAuthState } from '@/hooks/useAuthState';
 import PushBanner from '@/components/PushBanner';
 import OrderContact from '@/components/OrderContact';
+import ReviewForm from '@/components/ReviewForm';
 import { formatDateTime, formatVND, localizedName } from '@/lib/format';
 import type { Payment, ServiceCategory, ServiceOrder, Warranty } from '@/types/supabase';
 import type { TechnicianPublic } from '@/hooks/useQuotations';
@@ -240,6 +241,13 @@ export default function OrderDetailPage({
       {order.technician_uid && order.status !== 'cancelled' && (
         <div className="mb-4">
           <OrderContact orderId={order.id} locale={locale} />
+        </div>
+      )}
+
+      {/* 완료 후 리뷰·평점 */}
+      {order.status === 'completed' && order.technician_uid && (
+        <div className="mb-4">
+          <ReviewForm orderId={order.id} locale={locale} />
         </div>
       )}
 
