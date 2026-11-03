@@ -488,14 +488,16 @@ export default function LandingClient({ locale }: { locale: string }) {
         className="sticky top-0 z-40 flex items-center justify-between px-4 py-3 gap-2"
         style={{ background: 'var(--color-primary)' }}
       >
-        <a href="#" className="flex items-center">
+        {/* 로고는 빨간 'BEST' + 검정 'MARIO' 조합이라 흰 배경용이다.
+            빨간 헤더에 그대로 올리면 'BEST' 가 배경에 묻히므로 흰 판 위에 올린다. */}
+        <a href="#" className="flex items-center rounded-lg bg-white px-2.5 py-1.5 shadow-sm">
           <Image
             src="/bestmario-logo.webp"
             alt="BestMario"
             width={480}
             height={155}
             priority
-            className="h-10 w-auto"
+            className="h-7 w-auto"
           />
         </a>
 
