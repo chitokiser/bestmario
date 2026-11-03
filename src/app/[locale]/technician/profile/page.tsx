@@ -16,6 +16,7 @@ const STATUS_LABEL = {
   pending:   { ko: '승인 대기', vi: 'Chờ phê duyệt', en: 'Pending' },
   active:    { ko: '승인 완료', vi: 'Đã phê duyệt',  en: 'Active' },
   suspended: { ko: '정지',      vi: 'Tạm ngưng',     en: 'Suspended' },
+  rejected:  { ko: '반려',      vi: 'Từ chối',       en: 'Rejected' },
 } as const;
 
 export default function TechnicianProfilePage({ params }: { params: Promise<{ locale: string }> }) {
@@ -154,6 +155,8 @@ export default function TechnicianProfilePage({ params }: { params: Promise<{ lo
               ? { color: '#388E3C', background: '#E8F5E9' }
               : status === 'suspended'
                 ? { color: '#D32F2F', background: '#FFEBEE' }
+                : status === 'rejected'
+                  ? { color: '#6D4C41', background: '#EFEBE9' }
                 : { color: '#FFA000', background: '#FFF8E1' }
           }
         >

@@ -3,23 +3,15 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { useRouter, usePathname } from 'next/navigation';
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { auth, callMerchantMemberJoin } from '@/lib/firebase';
-import { createSupabaseClient } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 import { useUTM } from '@/hooks/useUTM';
 import { useMerchant } from '@/hooks/useMerchant';
 import { useWebzines } from '@/hooks/useWebzines';
 import { useAuthState } from '@/hooks/useAuthState';
+import { useLogin } from '@/hooks/useLogin';
 import { useOrders } from '@/hooks/useOrders';
 
 const MERCHANT_ID = process.env.NEXT_PUBLIC_BESTMARIO_MERCHANT_ID || undefined;
-
-const LOCALES = [
-  { code: 'vi', label: 'VI' },
-  { code: 'ko', label: 'KO' },
-  { code: 'en', label: 'EN' },
-];
 
 interface ServiceCategory {
   id: string;
@@ -319,11 +311,9 @@ export default function LandingClient({ locale }: { locale: string }) {
   const t = useTranslations('home');
   const tCommon = useTranslations('common');
   const router = useRouter();
-  const pathname = usePathname();
 
   useUTM();
 
-  const [joinLoading, setJoinLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -336,69 +326,12 @@ export default function LandingClient({ locale }: { locale: string }) {
   const [modalNote, setModalNote] = useState('');
   const [modalError, setModalError] = useState<string | null>(null);
 
-  const { user, authLoading } = useAuthState();
+  const { user } = useAuthState();
   const { createOrder, submitting } = useOrders();
   const { merchant, loading: merchantLoading } = useMerchant(MERCHANT_ID);
   const { webzines, loading: webzinesLoading } = useWebzines(MERCHANT_ID, 3);
 
-  const handleLogin = async () => {
-    try {
-      const result = await signInWithPopup(auth, new GoogleAuthProvider());
-      if (!result.user) return;
-
-      setJoinLoading(true);
-      try {
-        // Supabase users 행 생성. ignoreDuplicates 이므로 재로그인 시
-        // 기존 role(technician/admin)을 customer 로 덮어쓰지 않는다.
-        const idToken = await result.user.getIdToken();
-        const supabase = createSupabaseClient(idToken);
-        const { error } = await supabase.from('users').upsert(
-          {
-            uid: result.user.uid,
-            role: 'customer',
-            name: result.user.displayName ?? '',
-            phone: result.user.phoneNumber ?? '',
-            lang: locale,
-            created_at: new Date().toISOString(),
-          },
-          { onConflict: 'uid', ignoreDuplicates: true }
-        );
-        if (error) console.error('[supabase] users upsert 실패', error.message);
-      } catch (e) {
-        // Supabase 저장 실패 — 로그인 자체는 유지한다
-        console.error('[supabase] users upsert 예외', e);
-      }
-
-      if (MERCHANT_ID) {
-        try {
-          await callMerchantMemberJoin(MERCHANT_ID);
-        } catch {
-          // 멘토 지정 실패 무시
-        }
-      }
-      setJoinLoading(false);
-    } catch (e) {
-      // 사용자가 팝업을 닫거나 취소한 경우만 조용히 넘기고, 그 외는 사유를 드러낸다.
-      // 전부 삼키면 설정 오류(승인 도메인 누락 등)가 화면에 아무 신호 없이 사라진다.
-      const code = (e as { code?: string })?.code ?? 'unknown';
-      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
-        console.error('[auth] 로그인 실패', code, e);
-        alert(`로그인에 실패했습니다 (${code})`);
-      }
-    }
-  };
-
-  const handleSwitchLocale = (newLocale: string) => {
-    const segments = pathname.split('/');
-    const knownLocales = ['ko', 'en', 'vi'];
-    if (knownLocales.includes(segments[1])) {
-      segments[1] = newLocale === 'vi' ? '' : newLocale;
-    } else {
-      if (newLocale !== 'vi') segments.splice(1, 0, newLocale);
-    }
-    const newPath = segments.filter(Boolean).join('/') || '/';
-    router.push('/' + newPath.replace(/^\//, ''));
-  };
+  const { login: handleLogin } = useLogin(locale);
 
   // service 는 service_categories.id (= BESTMARIO_SERVICES[].id)
   const openRequestModal = (service?: string, item?: string) => {
@@ -475,71 +408,6 @@ export default function LandingClient({ locale }: { locale: string }) {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-bg)' }}>
-      {/* ── Header ── */}
-      <header
-        className="sticky top-0 z-40 flex items-center gap-2 px-4 py-2.5"
-        style={{ background: 'var(--color-primary)' }}
-      >
-        {/* 로고는 빨간 'BEST' + 검정 'MARIO' 조합이라 흰 배경용이다.
-            빨간 헤더에 그대로 올리면 'BEST' 가 배경에 묻히므로 흰 판 위에 올린다. */}
-        <a href="#" className="flex shrink-0 items-center rounded-lg bg-white px-2 py-1 shadow-sm">
-          <Image
-            src="/bestmario-logo.webp"
-            alt="BestMario"
-            width={480}
-            height={155}
-            priority
-            className="h-6 w-auto"
-          />
-        </a>
-
-        {/* 지갑·포인트 정보는 마이페이지에 모았다. 로그인 전에는 '마이페이지' 자리에
-            '로그인'을 둬서 폭이 늘지 않고 한 줄이 유지된다. */}
-        <nav aria-label="main" className="flex min-w-0 items-center">
-          <button
-            onClick={() => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })}
-            className="whitespace-nowrap rounded-full px-2 py-1 text-[13px] font-bold text-white/90 transition-colors hover:bg-white/15 hover:text-white active:scale-95"
-          >
-            {tCommon('nav_services')}
-          </button>
-          {user ? (
-            <button
-              onClick={() => router.push(`/${locale}/mypage`)}
-              className="whitespace-nowrap rounded-full px-2 py-1 text-[13px] font-bold text-white/90 transition-colors hover:bg-white/15 hover:text-white active:scale-95"
-            >
-              {tCommon('nav_mypage')}
-            </button>
-          ) : (
-            !authLoading && (
-              <button
-                onClick={handleLogin}
-                disabled={joinLoading}
-                className="whitespace-nowrap rounded-full px-2 py-1 text-[13px] font-bold text-white/90 transition-colors hover:bg-white/15 hover:text-white active:scale-95 disabled:opacity-60"
-              >
-                {tCommon('login')}
-              </button>
-            )
-          )}
-        </nav>
-
-        <div className="ml-auto flex shrink-0 gap-1">
-          {LOCALES.map((l) => (
-            <button
-              key={l.code}
-              onClick={() => handleSwitchLocale(l.code)}
-              aria-current={locale === l.code ? 'true' : undefined}
-              className={`text-xs font-bold px-1.5 py-0.5 rounded transition-colors ${
-                locale === l.code
-                  ? 'bg-white text-red-600'
-                  : 'text-white hover:bg-white/20'
-              }`}
-            >
-              {l.label}
-            </button>
-          ))}
-        </div>
-      </header>
-
       {/* ── Hero ── */}
       <section
         className="relative overflow-hidden"

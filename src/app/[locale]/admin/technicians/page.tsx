@@ -9,6 +9,7 @@ const STATUS_STYLE: Record<TechnicianStatus, { color: string; bg: string; ko: st
   pending:   { color: '#FFA000', bg: '#FFF8E1', ko: '승인 대기', vi: 'Chờ duyệt',   en: 'Pending' },
   active:    { color: '#388E3C', bg: '#E8F5E9', ko: '활성',      vi: 'Hoạt động',   en: 'Active' },
   suspended: { color: '#D32F2F', bg: '#FFEBEE', ko: '정지',      vi: 'Tạm ngưng',   en: 'Suspended' },
+  rejected:  { color: '#6D4C41', bg: '#EFEBE9', ko: '반려',      vi: 'Từ chối',     en: 'Rejected' },
 };
 
 export default function AdminTechniciansPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -48,14 +49,14 @@ export default function AdminTechniciansPage({ params }: { params: Promise<{ loc
     void load();
   }, [load]);
 
-  const setStatus = async (uid: string, status: TechnicianStatus) => {
+  const setStatus = async (uid: string, status: TechnicianStatus, rejectReason?: string) => {
     if (acting) return;
     setActing(uid);
     setError(null);
     try {
       const { error: err } = await supabase
         .from('technician_profiles')
-        .update({ status })
+        .update(rejectReason === undefined ? { status } : { status, reject_reason: rejectReason })
         .eq('uid', uid);
       if (err) throw new Error(err.message);
       await load();
@@ -79,6 +80,18 @@ export default function AdminTechniciansPage({ params }: { params: Promise<{ loc
     }
     setDocUrls((prev) => ({ ...prev, [path]: data.signedUrl }));
     window.open(data.signedUrl, '_blank', 'noopener');
+  };
+
+  const reject = (uid: string) => {
+    const reason = window.prompt(
+      t('반려 사유를 입력해 주세요 (신청자에게 표시됩니다)', 'Nhập lý do từ chối (hiển thị cho người nộp đơn)', 'Enter the rejection reason (shown to the applicant)')
+    );
+    if (reason === null) return;
+    if (!reason.trim()) {
+      setError(t('반려 사유를 입력해야 합니다', 'Cần nhập lý do từ chối', 'A reason is required'));
+      return;
+    }
+    void setStatus(uid, 'rejected', reason.trim());
   };
 
   const nameOf = (uid: string) => users.find((u) => u.uid === uid)?.name || uid.slice(0, 10);
@@ -109,6 +122,7 @@ export default function AdminTechniciansPage({ params }: { params: Promise<{ loc
           {profiles.map((p) => {
             const s = STATUS_STYLE[p.status];
             const docs = Object.entries(p.documents ?? {});
+            const complete = Boolean(p.documents?.photo && p.documents?.id_card && p.submitted_at);
 
             return (
               <article key={p.uid} className="rounded-2xl border p-4" style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}>
@@ -127,6 +141,35 @@ export default function AdminTechniciansPage({ params }: { params: Promise<{ loc
                     {t(s.ko, s.vi, s.en)}
                   </span>
                 </div>
+
+                {(p.experience_years !== null || p.career || p.bio) && (
+                  <dl className="mt-3 space-y-1.5 text-xs" style={{ color: 'var(--color-text)' }}>
+                    {p.experience_years !== null && (
+                      <div>
+                        <dt className="inline font-bold">{t('경력', 'Kinh nghiệm', 'Experience')}: </dt>
+                        <dd className="inline">{p.experience_years}{t('년', ' năm', ' yrs')}</dd>
+                      </div>
+                    )}
+                    {p.career && (
+                      <div>
+                        <dt className="font-bold">{t('경력 내용', 'Chi tiết kinh nghiệm', 'Career')}</dt>
+                        <dd className="whitespace-pre-wrap" style={{ color: 'var(--color-text-muted)' }}>{p.career}</dd>
+                      </div>
+                    )}
+                    {p.bio && (
+                      <div>
+                        <dt className="font-bold">{t('자기소개', 'Giới thiệu', 'Bio')}</dt>
+                        <dd className="whitespace-pre-wrap" style={{ color: 'var(--color-text-muted)' }}>{p.bio}</dd>
+                      </div>
+                    )}
+                  </dl>
+                )}
+
+                {p.status === 'rejected' && p.reject_reason && (
+                  <p className="mt-2 text-xs font-semibold" style={{ color: '#6D4C41' }}>
+                    {t('반려 사유', 'Lý do từ chối', 'Reason')}: {p.reject_reason}
+                  </p>
+                )}
 
                 {p.skills.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -161,14 +204,25 @@ export default function AdminTechniciansPage({ params }: { params: Promise<{ loc
                   {p.status !== 'active' && (
                     <button
                       onClick={() => void setStatus(p.uid, 'active')}
-                      disabled={acting !== null}
+                      disabled={acting !== null || !complete}
+                      title={complete ? undefined : t('사진·신분증이 있어야 승인할 수 있습니다', 'Cần ảnh và giấy tờ tùy thân', 'Photo and ID card are required')}
                       className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-50"
                       style={{ background: '#388E3C' }}
                     >
                       {t('승인', 'Phê duyệt', 'Approve')}
                     </button>
                   )}
-                  {p.status !== 'suspended' && (
+                  {p.status === 'pending' && (
+                    <button
+                      onClick={() => reject(p.uid)}
+                      disabled={acting !== null}
+                      className="rounded-xl border px-4 py-2.5 text-sm font-bold disabled:opacity-50"
+                      style={{ borderColor: '#6D4C41', color: '#6D4C41' }}
+                    >
+                      {t('반려', 'Từ chối', 'Reject')}
+                    </button>
+                  )}
+                  {p.status !== 'suspended' && p.status !== 'rejected' && (
                     <button
                       onClick={() => void setStatus(p.uid, 'suspended')}
                       disabled={acting !== null}
@@ -178,7 +232,7 @@ export default function AdminTechniciansPage({ params }: { params: Promise<{ loc
                       {t('정지', 'Tạm ngưng', 'Suspend')}
                     </button>
                   )}
-                  {p.status !== 'pending' && (
+                  {p.status !== 'pending' && p.status !== 'rejected' && (
                     <button
                       onClick={() => void setStatus(p.uid, 'pending')}
                       disabled={acting !== null}

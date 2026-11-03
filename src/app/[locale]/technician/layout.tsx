@@ -60,8 +60,6 @@ export default function TechnicianLayout({
 
   const [profile, setProfile] = useState<TechnicianProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [registering, setRegistering] = useState(false);
-  const [registerError, setRegisterError] = useState<string | null>(null);
 
   const t = (ko: string, vi: string, en: string) =>
     locale === 'vi' ? vi : locale === 'en' ? en : ko;
@@ -84,32 +82,6 @@ export default function TechnicianLayout({
   useEffect(() => {
     void loadProfile();
   }, [loadProfile]);
-
-  const handleRegister = async () => {
-    if (!user || registering) return;
-    setRegistering(true);
-    setRegisterError(null);
-    try {
-      // guard_user_role 트리거가 customer → technician 자가 변경만 허용한다
-      const { error: roleErr } = await supabase
-        .from('users')
-        .update({ role: 'technician' })
-        .eq('uid', user.uid);
-      if (roleErr) throw new Error(roleErr.message);
-
-      const { error: profErr } = await supabase
-        .from('technician_profiles')
-        .upsert({ uid: user.uid, status: 'pending' }, { onConflict: 'uid', ignoreDuplicates: true });
-      if (profErr) throw new Error(profErr.message);
-
-      await loadProfile();
-      router.push(`/${locale}/technician/profile`);
-    } catch (e) {
-      setRegisterError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setRegistering(false);
-    }
-  };
 
   if (authLoading || roleLoading || profileLoading) {
     return <Shell><p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{t('불러오는 중…', 'Đang tải…', 'Loading…')}</p></Shell>;
@@ -148,35 +120,21 @@ export default function TechnicianLayout({
                 'No account record found. Log in again from the home page to create one.'
               )
             : t(
-                'BestMario 출장서비스기사로 등록하시겠습니까? 등록 후 관리자 승인을 받으면 주문을 받을 수 있습니다.',
-                'Bạn muốn đăng ký làm kỹ thuật viên BestMario? Sau khi quản trị phê duyệt, bạn có thể nhận đơn.',
-                'Register as a BestMario technician? After admin approval you can take orders.'
+                '기술분야·경력·자기소개와 사진·신분증을 제출하면 관리자가 확인 후 승인합니다. 승인되면 주문을 받을 수 있습니다.',
+                'Gửi lĩnh vực, kinh nghiệm, giới thiệu cùng ảnh và giấy tờ tùy thân; quản trị sẽ xem xét. Sau khi được duyệt bạn có thể nhận đơn.',
+                'Submit your skills, experience, bio, photo and ID; an admin will review. Once approved you can take orders.'
               )
         }
         action={
-          <>
-            {registerError && (
-              <p className="mt-3 text-xs font-semibold" style={{ color: '#D32F2F' }}>{registerError}</p>
-            )}
-            {role === 'customer' ? (
-              <button
-                onClick={handleRegister}
-                disabled={registering}
-                className="mt-4 rounded-xl px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-                style={{ background: 'var(--color-primary)' }}
-              >
-                {registering ? t('처리 중…', 'Đang xử lý…', 'Processing…') : t('기술자로 등록 신청', 'Đăng ký kỹ thuật viên', 'Register as technician')}
-              </button>
-            ) : (
-              <button
-                onClick={() => router.push(`/${locale}`)}
-                className="mt-4 rounded-xl px-5 py-2.5 text-sm font-bold text-white"
-                style={{ background: 'var(--color-primary)' }}
-              >
-                {t('홈으로', 'Về trang chủ', 'Go home')}
-              </button>
-            )}
-          </>
+          <button
+            onClick={() => router.push(role === 'customer' ? `/${locale}/apply/technician` : `/${locale}`)}
+            className="mt-4 rounded-xl px-5 py-2.5 text-sm font-bold text-white"
+            style={{ background: 'var(--color-primary)' }}
+          >
+            {role === 'customer'
+              ? t('기술자 신청서 작성', 'Điền đơn đăng ký', 'Fill in application')
+              : t('홈으로', 'Về trang chủ', 'Go home')}
+          </button>
         }
       />
     );
@@ -184,33 +142,55 @@ export default function TechnicianLayout({
 
   const onProfilePage = pathname.endsWith('/technician/profile');
 
-  // 승인 대기 중에는 프로필(서류 등록)만 열어 둔다
+  // 승인 전에는 프로필 화면만 열어 둔다 (승인 대기·반려 상태에서 서류 확인용)
   if (profile?.status !== 'active' && !onProfilePage) {
+    const status = profile?.status;
+    const submitted = Boolean(profile?.submitted_at);
+    const needsApply = !profile || status === 'rejected' || !submitted;
+    const icon = status === 'suspended' ? '⛔' : status === 'rejected' ? '📝' : needsApply ? '🧰' : '⏳';
+    const title =
+      status === 'suspended'
+        ? t('계정이 정지되었습니다', 'Tài khoản bị tạm ngưng', 'Account suspended')
+        : status === 'rejected'
+          ? t('신청이 반려되었습니다', 'Đơn đăng ký bị từ chối', 'Application rejected')
+          : needsApply
+            ? t('기술자 신청서를 제출해 주세요', 'Hãy gửi đơn đăng ký', 'Please submit your application')
+            : t('관리자 승인 대기 중', 'Đang chờ phê duyệt', 'Awaiting admin approval');
+    const body =
+      status === 'suspended'
+        ? t('고객센터로 문의해 주세요.', 'Vui lòng liên hệ CSKH.', 'Please contact support.')
+        : status === 'rejected'
+          ? `${t('사유', 'Lý do', 'Reason')}: ${profile?.reject_reason || '-'}`
+          : needsApply
+            ? t(
+                '기술분야·경력·자기소개와 사진·신분증을 제출해야 승인 심사가 시작됩니다.',
+                'Cần gửi lĩnh vực, kinh nghiệm, giới thiệu, ảnh và giấy tờ để được xét duyệt.',
+                'Submit your skills, experience, bio, photo and ID to start the review.'
+              )
+            : t(
+                '제출하신 신청서를 관리자가 확인하고 있습니다. 승인되면 주문을 받을 수 있습니다.',
+                'Quản trị đang xem xét đơn của bạn. Sau khi được duyệt bạn có thể nhận đơn.',
+                'An admin is reviewing your application. You can take orders once approved.'
+              );
     return (
       <Notice
-        icon={profile?.status === 'suspended' ? '⛔' : '⏳'}
-        title={
-          profile?.status === 'suspended'
-            ? t('계정이 정지되었습니다', 'Tài khoản bị tạm ngưng', 'Account suspended')
-            : t('관리자 승인 대기 중', 'Đang chờ phê duyệt', 'Awaiting admin approval')
-        }
-        body={
-          profile?.status === 'suspended'
-            ? t('고객센터로 문의해 주세요.', 'Vui lòng liên hệ CSKH.', 'Please contact support.')
-            : t(
-                '프로필에서 기술 분야와 서류를 등록하면 관리자가 확인 후 승인합니다.',
-                'Hãy điền hồ sơ và tải giấy tờ; quản trị sẽ xem xét và phê duyệt.',
-                'Fill in your profile and upload documents; an admin will review and approve.'
-              )
-        }
+        icon={icon}
+        title={title}
+        body={body}
         action={
-          <button
-            onClick={() => router.push(`/${locale}/technician/profile`)}
-            className="mt-4 rounded-xl px-5 py-2.5 text-sm font-bold text-white"
-            style={{ background: 'var(--color-primary)' }}
-          >
-            {t('프로필 작성하기', 'Điền hồ sơ', 'Complete profile')}
-          </button>
+          status === 'suspended' ? undefined : (
+            <button
+              onClick={() => router.push(needsApply ? `/${locale}/apply/technician` : `/${locale}/technician/profile`)}
+              className="mt-4 rounded-xl px-5 py-2.5 text-sm font-bold text-white"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              {status === 'rejected'
+                ? t('수정해서 다시 제출', 'Sửa và gửi lại', 'Edit and resubmit')
+                : needsApply
+                  ? t('신청서 작성', 'Điền đơn đăng ký', 'Fill in application')
+                  : t('제출 내용 보기', 'Xem hồ sơ đã gửi', 'View submission')}
+            </button>
+          )
         }
       />
     );
@@ -218,7 +198,7 @@ export default function TechnicianLayout({
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-bg)' }}>
-      <header className="sticky top-0 z-40 px-4 py-3" style={{ background: 'var(--color-primary)' }}>
+      <header className="sticky top-[52px] z-40 px-4 py-2" style={{ background: 'var(--color-primary)' }}>
         <p className="text-sm font-extrabold text-white">
           🛠️ BestMario {t('기술자', 'Kỹ thuật viên', 'Technician')}
         </p>

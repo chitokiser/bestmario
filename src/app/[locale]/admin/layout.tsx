@@ -95,7 +95,7 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-bg)' }}>
-      <header className="sticky top-0 z-40 px-4 py-3" style={{ background: '#1A1A1F' }}>
+      <header className="sticky top-[52px] z-40 px-4 py-2" style={{ background: '#1A1A1F' }}>
         <p className="text-sm font-extrabold text-white">
           ⚙️ BestMario {t('관리자', 'Quản trị', 'Admin')}
         </p>

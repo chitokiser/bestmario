@@ -6,7 +6,7 @@ export type OrderStatus = 'pending' | 'assigned' | 'in_progress' | 'completed' |
 export type PaymentMethod = 'vietqr' | 'momo' | 'bm' | 'cash';
 export type PaymentStatus = 'held' | 'completed' | 'refunded';
 export type UserRole = 'customer' | 'technician' | 'admin';
-export type TechnicianStatus = 'pending' | 'active' | 'suspended';
+export type TechnicianStatus = 'pending' | 'active' | 'suspended' | 'rejected';
 export type QuotationStatus = 'submitted' | 'accepted' | 'rejected';
 export type WarrantyStatus = 'active' | 'claimed' | 'closed';
 export type DisputeStatus = 'open' | 'investigating' | 'resolved';
@@ -27,6 +27,11 @@ export interface TechnicianProfile {
   documents: Record<string, string>;
   rating: number;
   rating_count: number;
+  experience_years: number | null;
+  career: string;
+  bio: string;
+  submitted_at: string | null;
+  reject_reason: string;
 }
 
 export interface ServiceCategory {

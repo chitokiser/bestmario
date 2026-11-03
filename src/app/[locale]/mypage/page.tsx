@@ -59,7 +59,7 @@ export default function MyPage({ params }: { params: Promise<{ locale: string }>
           'Sau khi quản trị phê duyệt, bạn có thể nhận đơn',
           'Take orders after admin approval',
         ),
-        href: '/technician',
+        href: '/apply/technician',
       });
     }
   }
