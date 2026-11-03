@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useRouter, usePathname } from 'next/navigation';
-import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth, callMerchantMemberJoin } from '@/lib/firebase';
 import { createSupabaseClient } from '@/lib/supabase';
 import { useUTM } from '@/hooks/useUTM';
@@ -315,18 +315,6 @@ function formatVND(amount: number): string {
   return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(amount) + '₫';
 }
 
-function WalletChip({ icon, value, label }: { icon: string; value: number; label: string }) {
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold"
-      style={{ background: 'rgba(255,255,255,0.15)' }}
-      aria-label={`${label}: ${value}`}
-    >
-      {icon} {new Intl.NumberFormat().format(value)}
-    </span>
-  );
-}
-
 export default function LandingClient({ locale }: { locale: string }) {
   const t = useTranslations('home');
   const tCommon = useTranslations('common');
@@ -348,7 +336,7 @@ export default function LandingClient({ locale }: { locale: string }) {
   const [modalNote, setModalNote] = useState('');
   const [modalError, setModalError] = useState<string | null>(null);
 
-  const { user, wallets, authLoading } = useAuthState();
+  const { user, authLoading } = useAuthState();
   const { createOrder, submitting } = useOrders();
   const { merchant, loading: merchantLoading } = useMerchant(MERCHANT_ID);
   const { webzines, loading: webzinesLoading } = useWebzines(MERCHANT_ID, 3);
@@ -399,8 +387,6 @@ export default function LandingClient({ locale }: { locale: string }) {
       }
     }
   };
-
-  const handleLogout = () => signOut(auth);
 
   const handleSwitchLocale = (newLocale: string) => {
     const segments = pathname.split('/');
@@ -491,74 +477,67 @@ export default function LandingClient({ locale }: { locale: string }) {
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-bg)' }}>
       {/* ── Header ── */}
       <header
-        className="sticky top-0 z-40 flex flex-wrap items-center justify-between px-4 py-3 gap-2"
+        className="sticky top-0 z-40 flex items-center gap-2 px-4 py-2.5"
         style={{ background: 'var(--color-primary)' }}
       >
         {/* 로고는 빨간 'BEST' + 검정 'MARIO' 조합이라 흰 배경용이다.
             빨간 헤더에 그대로 올리면 'BEST' 가 배경에 묻히므로 흰 판 위에 올린다. */}
-        <a href="#" className="flex items-center rounded-lg bg-white px-2.5 py-1.5 shadow-sm">
+        <a href="#" className="flex shrink-0 items-center rounded-lg bg-white px-2 py-1 shadow-sm">
           <Image
             src="/bestmario-logo.webp"
             alt="BestMario"
             width={480}
             height={155}
             priority
-            className="h-7 w-auto"
+            className="h-6 w-auto"
           />
         </a>
 
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          {user && wallets && (
-            <div className="flex gap-1 flex-wrap">
-              <WalletChip icon="💎" value={wallets.pointBalanceVnd} label="BM" />
-              <WalletChip icon="🎟️" value={wallets.btBalance} label="BT" />
-              <WalletChip icon="⭐" value={wallets.pointBalance} label="Point" />
-            </div>
-          )}
-
-          {!authLoading && (
-            <button
-              onClick={user ? handleLogout : handleLogin}
-              disabled={joinLoading}
-              className="text-xs font-semibold text-white underline-offset-2 hover:underline whitespace-nowrap disabled:opacity-60"
-            >
-              {joinLoading ? tCommon('join_processing') : user ? tCommon('logout') : tCommon('login')}
-            </button>
-          )}
-
-          <div className="flex gap-1">
-            {LOCALES.map((l) => (
-              <button
-                key={l.code}
-                onClick={() => handleSwitchLocale(l.code)}
-                aria-current={locale === l.code ? 'true' : undefined}
-                className={`text-xs font-bold px-1.5 py-0.5 rounded transition-colors ${
-                  locale === l.code
-                    ? 'bg-white text-red-600'
-                    : 'text-white hover:bg-white/20'
-                }`}
-              >
-                {l.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 상단 메뉴: 로고·지갑·언어 줄이 이미 가득 차서 별도 줄로 둔다 */}
-        <nav aria-label="main" className="flex w-full gap-2">
+        {/* 지갑·포인트 정보는 마이페이지에 모았다. 로그인 전에는 '마이페이지' 자리에
+            '로그인'을 둬서 폭이 늘지 않고 한 줄이 유지된다. */}
+        <nav aria-label="main" className="flex min-w-0 items-center">
           <button
             onClick={() => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })}
-            className="flex-1 rounded-lg bg-white/15 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/25 active:scale-95"
+            className="whitespace-nowrap rounded-full px-2 py-1 text-[13px] font-bold text-white/90 transition-colors hover:bg-white/15 hover:text-white active:scale-95"
           >
             {tCommon('nav_services')}
           </button>
-          <button
-            onClick={() => router.push(`/${locale}/orders`)}
-            className="flex-1 rounded-lg bg-white/15 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/25 active:scale-95"
-          >
-            {tCommon('nav_mypage')}
-          </button>
+          {user ? (
+            <button
+              onClick={() => router.push(`/${locale}/mypage`)}
+              className="whitespace-nowrap rounded-full px-2 py-1 text-[13px] font-bold text-white/90 transition-colors hover:bg-white/15 hover:text-white active:scale-95"
+            >
+              {tCommon('nav_mypage')}
+            </button>
+          ) : (
+            !authLoading && (
+              <button
+                onClick={handleLogin}
+                disabled={joinLoading}
+                className="whitespace-nowrap rounded-full px-2 py-1 text-[13px] font-bold text-white/90 transition-colors hover:bg-white/15 hover:text-white active:scale-95 disabled:opacity-60"
+              >
+                {tCommon('login')}
+              </button>
+            )
+          )}
         </nav>
+
+        <div className="ml-auto flex shrink-0 gap-1">
+          {LOCALES.map((l) => (
+            <button
+              key={l.code}
+              onClick={() => handleSwitchLocale(l.code)}
+              aria-current={locale === l.code ? 'true' : undefined}
+              className={`text-xs font-bold px-1.5 py-0.5 rounded transition-colors ${
+                locale === l.code
+                  ? 'bg-white text-red-600'
+                  : 'text-white hover:bg-white/20'
+              }`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
       </header>
 
       {/* ── Hero ── */}
