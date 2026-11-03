@@ -11,6 +11,7 @@ import { useUTM } from '@/hooks/useUTM';
 import { useMerchant } from '@/hooks/useMerchant';
 import { useWebzines } from '@/hooks/useWebzines';
 import { useAuthState } from '@/hooks/useAuthState';
+import { useOrders } from '@/hooks/useOrders';
 
 const MERCHANT_ID = process.env.NEXT_PUBLIC_BESTMARIO_MERCHANT_ID || undefined;
 
@@ -341,8 +342,14 @@ export default function LandingClient({ locale }: { locale: string }) {
   const [showModal, setShowModal] = useState(false);
   const [modalService, setModalService] = useState('');
   const [modalItem, setModalItem] = useState('');
+  const [modalPhone, setModalPhone] = useState('');
+  const [modalAddress, setModalAddress] = useState('');
+  const [modalSchedule, setModalSchedule] = useState('');
+  const [modalNote, setModalNote] = useState('');
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const { user, wallets, authLoading } = useAuthState();
+  const { createOrder, submitting } = useOrders();
   const { merchant, loading: merchantLoading } = useMerchant(MERCHANT_ID);
   const { webzines, loading: webzinesLoading } = useWebzines(MERCHANT_ID, 3);
 
@@ -401,10 +408,49 @@ export default function LandingClient({ locale }: { locale: string }) {
     router.push('/' + newPath.replace(/^\//, ''));
   };
 
+  // service 는 service_categories.id (= BESTMARIO_SERVICES[].id)
   const openRequestModal = (service?: string, item?: string) => {
     setModalService(service ?? '');
     setModalItem(item ?? '');
+    setModalNote(item ?? '');
+    setModalError(null);
     setShowModal(true);
+  };
+
+  // 견적 요청 주문 생성 — order_type = 'quote_request' (스펙 §5③)
+  const handleSubmitQuoteRequest = async () => {
+    setModalError(null);
+
+    if (!user) {
+      setModalError(
+        locale === 'vi' ? 'Vui lòng đăng nhập trước.' :
+        locale === 'en' ? 'Please log in first.' : '먼저 로그인해 주세요.'
+      );
+      return;
+    }
+    if (!modalService || !modalAddress.trim() || !modalSchedule) {
+      setModalError(
+        locale === 'vi' ? 'Hãy chọn lĩnh vực và nhập địa chỉ, thời gian.' :
+        locale === 'en' ? 'Select a category and enter address and time.' :
+        '서비스 분야, 주소, 희망 일시를 입력해 주세요.'
+      );
+      return;
+    }
+
+    try {
+      const contact = modalPhone.trim();
+      const order = await createOrder({
+        category_id: modalService,
+        order_type: 'quote_request',
+        address: modalAddress.trim(),
+        scheduled_at: new Date(modalSchedule).toISOString(),
+        note: contact ? `${modalNote.trim()}\n(연락처: ${contact})` : modalNote.trim(),
+      });
+      setShowModal(false);
+      router.push(`/${locale}/orders/${order.id}`);
+    } catch (e) {
+      setModalError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   const getServiceLabel = (svc: ServiceCategory) => {
@@ -720,7 +766,7 @@ export default function LandingClient({ locale }: { locale: string }) {
                         {svc.items.map((_, idx) => (
                           <button
                             key={idx}
-                            onClick={() => openRequestModal(svc.title, getItemLabel(svc, idx))}
+                            onClick={() => openRequestModal(svc.id, getItemLabel(svc, idx))}
                             className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all hover:border-red-400 hover:text-red-600"
                             style={{
                               background: 'var(--color-bg, #f7f7f8)',
@@ -737,7 +783,7 @@ export default function LandingClient({ locale }: { locale: string }) {
                       {/* CTA */}
                       <div className="px-4 pb-4">
                         <button
-                          onClick={() => openRequestModal(svc.title)}
+                          onClick={() => openRequestModal(svc.id)}
                           className="w-full rounded-xl py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 active:scale-95"
                           style={{ background: 'var(--color-primary)' }}
                         >
@@ -942,7 +988,7 @@ export default function LandingClient({ locale }: { locale: string }) {
                     {locale === 'vi' ? '-- Chọn lĩnh vực --' : locale === 'en' ? '-- Select category --' : '-- 선택해주세요 --'}
                   </option>
                   {BESTMARIO_SERVICES.map((svc) => (
-                    <option key={svc.id} value={svc.title}>{getServiceLabel(svc)}</option>
+                    <option key={svc.id} value={svc.id}>{getServiceLabel(svc)}</option>
                   ))}
                 </select>
               </div>
@@ -953,7 +999,31 @@ export default function LandingClient({ locale }: { locale: string }) {
                 </label>
                 <input
                   type="tel"
+                  value={modalPhone}
+                  onChange={(e) => setModalPhone(e.target.value)}
                   placeholder={locale === 'vi' ? '0123 456 789' : '010-0000-0000'}
+                  className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                  style={{
+                    background: 'var(--color-bg, #f7f7f8)',
+                    borderColor: 'var(--color-border, #ebebed)',
+                    color: 'var(--color-text)',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                  {locale === 'vi' ? 'Địa chỉ' : locale === 'en' ? 'Address' : '방문 주소'}
+                </label>
+                <input
+                  type="text"
+                  value={modalAddress}
+                  onChange={(e) => setModalAddress(e.target.value)}
+                  placeholder={
+                    locale === 'vi' ? 'VD: Mỹ Đình, Hà Nội, tòa A, căn 1001' :
+                    locale === 'en' ? 'e.g. My Dinh, Hanoi, Bldg A, Apt 1001' :
+                    '예: 하노이 미딩 OO아파트 101동 1001호'
+                  }
                   className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
                   style={{
                     background: 'var(--color-bg, #f7f7f8)',
@@ -969,6 +1039,8 @@ export default function LandingClient({ locale }: { locale: string }) {
                 </label>
                 <input
                   type="datetime-local"
+                  value={modalSchedule}
+                  onChange={(e) => setModalSchedule(e.target.value)}
                   className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
                   style={{
                     background: 'var(--color-bg, #f7f7f8)',
@@ -984,7 +1056,8 @@ export default function LandingClient({ locale }: { locale: string }) {
                 </label>
                 <textarea
                   rows={3}
-                  defaultValue={modalItem ? `${modalItem}` : ''}
+                  value={modalNote}
+                  onChange={(e) => setModalNote(e.target.value)}
                   placeholder={
                     locale === 'vi' ? 'Mô tả chi tiết (địa điểm, triệu chứng, ghi chú…)' :
                     locale === 'en' ? 'Describe the issue (location, symptoms, notes…)' :
@@ -1000,16 +1073,40 @@ export default function LandingClient({ locale }: { locale: string }) {
               </div>
             </div>
 
+            {modalError && (
+              <p className="mt-4 text-xs font-semibold" style={{ color: '#D32F2F' }}>{modalError}</p>
+            )}
+
+            <p className="mt-4 text-[11px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+              {locale === 'vi'
+                ? 'Kỹ thuật viên sẽ gửi báo giá (tối đa 5). Bạn chọn một báo giá rồi thanh toán.'
+                : locale === 'en'
+                  ? 'Technicians will send quotes (up to 5). You pick one, then pay.'
+                  : '기술자가 견적을 제출합니다(최대 5건). 견적을 선택한 뒤 결제합니다.'}
+            </p>
+
             <button
-              onClick={() => setShowModal(false)}
-              className="w-full mt-5 rounded-2xl py-3.5 text-sm font-extrabold text-white transition-opacity hover:opacity-90"
+              onClick={handleSubmitQuoteRequest}
+              disabled={submitting}
+              className="w-full mt-3 rounded-2xl py-3.5 text-sm font-extrabold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               style={{ background: 'var(--color-primary)' }}
             >
-              {locale === 'vi' ? 'Gửi yêu cầu báo giá →' : locale === 'en' ? 'Send Quote Request →' : '견적 요청 보내기 →'}
+              {submitting
+                ? (locale === 'vi' ? 'Đang gửi…' : locale === 'en' ? 'Sending…' : '전송 중…')
+                : (locale === 'vi' ? 'Gửi yêu cầu báo giá →' : locale === 'en' ? 'Send Quote Request →' : '견적 요청 보내기 →')}
+            </button>
+            <button
+              onClick={() => { setShowModal(false); router.push(`/${locale}/order/new`); }}
+              className="w-full mt-2 py-2.5 text-sm font-semibold underline underline-offset-2"
+              style={{ color: 'var(--color-primary)' }}
+            >
+              {locale === 'vi' ? 'Hoặc đặt ngay theo giá cố định →' :
+               locale === 'en' ? 'Or book a fixed-price item now →' :
+               '또는 고정가 항목으로 바로 예약 →'}
             </button>
             <button
               onClick={() => setShowModal(false)}
-              className="w-full mt-2 py-2.5 text-sm"
+              className="w-full mt-1 py-2.5 text-sm"
               style={{ color: 'var(--color-text-muted)' }}
             >
               {locale === 'vi' ? 'Hủy' : locale === 'en' ? 'Cancel' : '취소'}
