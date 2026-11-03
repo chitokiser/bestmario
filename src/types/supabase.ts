@@ -70,6 +70,7 @@ export interface Quotation {
   duration_min: number;
   note: string;
   status: QuotationStatus;
+  created_at: string;
 }
 
 export interface Payment {
@@ -78,6 +79,8 @@ export interface Payment {
   amount: number;
   method: PaymentMethod;
   status: PaymentStatus;
+  /** 스펙 §10 중복 결제 방지 키. 혼합 결제는 수단별로 다른 값을 쓴다. */
+  idempotency_key: string | null;
   paid_at: string;
 }
 
