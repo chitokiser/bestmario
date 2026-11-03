@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
           payload,
-          { TTL: 60 * 60 },
+          { TTL: 60 * 60, urgency: 'high' }, // 절전 중인 기기도 바로 깨워서 전달
         );
         sent += 1;
       } catch (e) {
