@@ -116,15 +116,20 @@ create index if not exists payments_order_idx on payments (order_id);
 create index if not exists payments_status_idx on payments (status);
 
 -- ── 정산 ────────────────────────────────────────────────────────────────
+-- net_amount 는 생성 컬럼이 아니다. BM 결제분은 BestClub 의 payServiceJobEscrow 가
+-- 이미 가맹점 수수료(feeBps, 기본 10%)를 떼고 escrowVnd 만 보관하므로, 거기에
+-- platform_fee_rate 를 다시 적용하면 이중 과금이 된다. generate_settlement 가
+-- 비BM 금액에만 수수료를 적용해 정확한 값을 직접 넣는다.
 create table if not exists settlements (
   id              uuid primary key default gen_random_uuid(),
   order_id        uuid not null references service_orders(id) on delete cascade,
   technician_uid  text not null references users(uid),
   gross_amount    int  not null check (gross_amount >= 0),
+  -- BestClub 에스크로를 통해 들어온 금액 (이미 BestClub 수수료가 차감된 상태)
+  bm_amount       int  not null default 0 check (bm_amount >= 0),
   fee_rate        numeric(4,3) not null default 0.100
                     check (fee_rate >= 0 and fee_rate < 1),
-  net_amount      int generated always as
-                    (floor(gross_amount * (1 - fee_rate))::int) stored,
+  net_amount      int  not null check (net_amount >= 0),
   settled_at      timestamptz not null default now(),
   -- 스펙 §10 중복 정산 방지
   unique (order_id)

@@ -59,7 +59,7 @@ export default function TechnicianSettlementsPage({ params }: { params: Promise<
       {/* 합계 */}
       <div className="rounded-2xl p-5" style={{ background: 'var(--color-primary-bg, #FFEBEE)' }}>
         <p className="text-xs font-semibold mb-1" style={{ color: 'var(--color-text-2)' }}>
-          {t('총 정산 금액', 'Tổng nhận được', 'Total received')}
+          {t('정산 예정 금액', 'Số tiền sẽ được thanh toán', 'Amount to be paid out')}
         </p>
         <p className="text-2xl font-extrabold" style={{ color: 'var(--color-primary)' }}>
           {formatVND(totalNet)}
@@ -68,6 +68,15 @@ export default function TechnicianSettlementsPage({ params }: { params: Promise<
           {t('총 매출', 'Tổng doanh thu', 'Gross')} {formatVND(totalGross)}
           {' · '}
           {t('건수', 'Số đơn', 'Jobs')} {settlements.length}
+        </p>
+        {/* BM 에스크로는 BestClub 에서 가맹점주 지갑으로 해제된다 (transaction.js releaseEscrow).
+            기술자 지갑에 직접 들어오지 않으므로 "수령 완료" 로 표현하지 않는다. */}
+        <p className="mt-2 text-[11px] leading-relaxed" style={{ color: 'var(--color-text-2, #5c5c6e)' }}>
+          {t(
+            '이 금액은 가맹점이 지급해야 할 정산액입니다. 실제 지급 일정과 방법은 가맹점에 확인해 주세요.',
+            'Đây là số tiền cửa hàng phải thanh toán cho bạn. Hãy xác nhận lịch và cách thanh toán với cửa hàng.',
+            'This is the amount the franchise owes you. Confirm the payout schedule and method with them.'
+          )}
         </p>
       </div>
 
@@ -99,6 +108,13 @@ export default function TechnicianSettlementsPage({ params }: { params: Promise<
                 {' · '}
                 {t('수수료', 'Phí', 'Fee')} {(s.fee_rate * 100).toFixed(1)}% (-{formatVND(s.gross_amount - s.net_amount)})
               </p>
+              {s.bm_amount > 0 && (
+                <p className="mt-0.5 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                  {t('BM 결제분', 'Phần BM', 'Paid in BM')} {formatVND(s.bm_amount)}
+                  {' — '}
+                  {t('BestClub 수수료 차감 후 금액이라 추가 수수료가 붙지 않습니다.', 'Đã trừ phí BestClub nên không tính phí thêm.', 'already net of the BestClub fee, so no extra fee applies.')}
+                </p>
+              )}
             </article>
           ))}
         </div>

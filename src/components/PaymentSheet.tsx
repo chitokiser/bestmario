@@ -9,6 +9,15 @@ import type { PaymentMethod } from '@/types/supabase';
 
 const MERCHANT_ID = process.env.NEXT_PUBLIC_BESTMARIO_MERCHANT_ID || undefined;
 
+// BestClub 의 payServiceJobEscrow 는 Firestore service_jobs/{serviceJobId} 문서가
+// status='accepted' 로 존재해야 동작한다. 그 문서를 만드는 경로가 BestClub 에
+// 아직 없어서(CP-4 규칙상 isStaff 전용) 현재 BM 결제는 '서비스 잡 없음' 으로 실패한다.
+// 연동이 끝나면 NEXT_PUBLIC_BM_PAYMENT_ENABLED=true 만 켜면 된다.
+const BM_ENABLED = process.env.NEXT_PUBLIC_BM_PAYMENT_ENABLED === 'true';
+
+// transaction.js:1636 — 최소 결제 금액 10,000 VND
+const BM_MIN_VND = 10000;
+
 /** 잔액 부족 시 BM 과 함께 쓸 보충 수단 */
 type RemainMethod = Exclude<PaymentMethod, 'bm'>;
 
@@ -94,6 +103,14 @@ export default function PaymentSheet({
         'Not enough BM balance. Use a mixed payment or another method.'
       );
     }
+    if (/서비스 잡 없음|잡 상태가/i.test(raw)) {
+      return L(
+        locale,
+        `BestClub 에스크로 연동이 아직 완료되지 않았습니다. 다른 결제 수단을 이용해 주세요. (${raw})`,
+        `Tích hợp ký quỹ BestClub chưa hoàn tất. Hãy dùng phương thức khác. (${raw})`,
+        `The BestClub escrow integration is not complete yet. Please use another payment method. (${raw})`
+      );
+    }
     if (/not-found|NOT_FOUND|internal/i.test(raw)) {
       return L(
         locale,
@@ -122,8 +139,27 @@ export default function PaymentSheet({
     setProcessing(true);
     try {
       if (method === 'bm') {
+        if (!BM_ENABLED) {
+          setError(L(
+            locale,
+            'BM 결제는 BestClub 연동 작업이 완료된 후 사용할 수 있습니다. 다른 수단을 선택해 주세요.',
+            'Thanh toán BM sẽ khả dụng sau khi hoàn tất tích hợp BestClub. Hãy chọn phương thức khác.',
+            'BM payment becomes available once the BestClub integration is finished. Please choose another method.'
+          ));
+          return;
+        }
         if (bmPortion <= 0) {
           setError(L(locale, 'BM 잔액이 없습니다. 다른 수단을 선택해 주세요.', 'Không có số dư BM. Hãy chọn phương thức khác.', 'No BM balance. Choose another method.'));
+          return;
+        }
+        if (bmPortion < BM_MIN_VND) {
+          // BestClub 쪽에서 거부되기 전에 미리 막는다
+          setError(L(
+            locale,
+            `BM 결제는 최소 ${formatVND(BM_MIN_VND)} 이상이어야 합니다. 사용 가능 금액이 ${formatVND(bmPortion)}이므로 다른 수단을 선택해 주세요.`,
+            `Thanh toán BM tối thiểu ${formatVND(BM_MIN_VND)}. Số khả dụng là ${formatVND(bmPortion)}, hãy chọn phương thức khác.`,
+            `BM payments require at least ${formatVND(BM_MIN_VND)}. Only ${formatVND(bmPortion)} is available, so please choose another method.`
+          ));
           return;
         }
         if (!MERCHANT_ID) {
@@ -208,11 +244,19 @@ export default function PaymentSheet({
           'After sending via MoMo, a technician is assigned once the admin confirms. (MoMo API is not live yet.)'
         );
       case 'bm':
+        if (!BM_ENABLED) {
+          return L(
+            locale,
+            '⚠️ BM 결제는 아직 사용할 수 없습니다. BestClub 에스크로 연동이 완료되면 활성화됩니다. 다른 수단을 선택해 주세요.',
+            '⚠️ Thanh toán BM chưa khả dụng. Sẽ bật khi hoàn tất tích hợp ký quỹ BestClub. Hãy chọn phương thức khác.',
+            '⚠️ BM payment is not available yet. It is enabled once the BestClub escrow integration is complete. Please choose another method.'
+          );
+        }
         return L(
           locale,
-          'BestClub BM 포인트로 결제합니다. 결제 금액은 작업 완료 승인까지 에스크로로 보관됩니다.',
-          'Thanh toán bằng điểm BM của BestClub. Tiền được giữ ký quỹ đến khi bạn xác nhận hoàn thành.',
-          'Pay with BestClub BM points. The amount is held in escrow until you approve completion.'
+          `BestClub BM 포인트로 결제합니다. 결제 금액은 작업 완료 승인까지 에스크로로 보관됩니다. 최소 ${formatVND(BM_MIN_VND)} 이상부터 가능합니다.`,
+          `Thanh toán bằng điểm BM của BestClub. Tiền được giữ ký quỹ đến khi bạn xác nhận hoàn thành. Tối thiểu ${formatVND(BM_MIN_VND)}.`,
+          `Pay with BestClub BM points. The amount is held in escrow until you approve completion. Minimum ${formatVND(BM_MIN_VND)}.`
         );
     }
   })();

@@ -136,6 +136,9 @@ as $$
 declare
   v_fee_rate numeric(4,3);
   v_gross    int;
+  v_bm       int;
+  v_non_bm   int;
+  v_net      int;
   v_raw      text;
 begin
   if new.status = 'completed' and old.status = 'in_progress' then
@@ -158,16 +161,23 @@ begin
       v_fee_rate := 0.100;
     end if;
 
-    -- 3) 확정된 비현금 결제만 합산 (혼합 결제는 여러 건이므로 sum)
-    select coalesce(sum(amount), 0) into v_gross
+    -- 3) 확정된 비현금 결제를 BM / 비BM 으로 나눠 합산 (혼합 결제는 여러 건)
+    --    BM 분은 BestClub payServiceJobEscrow 가 이미 가맹점 수수료(feeBps,
+    --    기본 10%)를 떼고 escrowVnd 로 보관한 금액이다. 여기서 또 떼면 이중 과금.
+    select coalesce(sum(amount) filter (where method = 'bm'), 0),
+           coalesce(sum(amount) filter (where method <> 'bm'), 0)
+      into v_bm, v_non_bm
       from payments
      where order_id = new.id
        and status = 'completed'
        and method <> 'cash';
 
+    v_gross := v_bm + v_non_bm;
+    v_net   := v_bm + floor(v_non_bm * (1 - v_fee_rate))::int;
+
     if new.technician_uid is not null and v_gross > 0 then
-      insert into settlements (order_id, technician_uid, gross_amount, fee_rate)
-      values (new.id, new.technician_uid, v_gross, v_fee_rate)
+      insert into settlements (order_id, technician_uid, gross_amount, bm_amount, fee_rate, net_amount)
+      values (new.id, new.technician_uid, v_gross, v_bm, v_fee_rate, v_net)
       on conflict (order_id) do nothing;
     end if;
 

@@ -63,11 +63,46 @@ update users set role = 'admin' where uid = '<FIREBASE_UID>';
 
 | 항목 | 현재 상태 |
 |---|---|
+| **BM 결제 (차단)** | `NEXT_PUBLIC_BM_PAYMENT_ENABLED=false`로 비활성. 사유는 아래 "BM 결제가 막힌 이유" |
 | `service_products.base_price` | **하노이 시세 기준 임시값.** 관리자가 전 항목 확정 필요 |
 | `service_settings.bm_rate_vnd` | `1000` (임시) — 관리자 화면에서 변경 |
 | `service_settings.platform_fee_rate` | `0.100` (스펙 §6의 10~15% 범위 내) |
-| BM 결제 | `payServiceJobEscrow` / `releaseEscrow` Firebase callable이 이 저장소에 **없음**. 공유 프로젝트에 존재하는지 확인 필요 |
-| BM 결제 기록 위조 | 고객이 Firebase 차감 없이 `method='bm'` 결제 행을 넣을 수 있음. 차감과 기록을 함께 수행하는 서버 경로(Edge Function 등)가 필요 |
+| BM 결제 기록 위조 | 고객이 Firebase 차감 없이 `method='bm'` 결제 행을 넣을 수 있음. 차감과 기록을 함께 수행하는 서버 경로가 필요 (아래 CP-6와 같은 작업) |
 | VietQR / MoMo | sandbox 미연동. 현재는 현금과 동일하게 관리자 수동 입금 확인 |
-| 완료 72시간 자동 승인 | 미구현. 관리자 화면의 "강제 완료 처리"로 수동 처리 |
+| 완료 72시간 자동 승인 | 미구현. 관리자 화면의 "강제 완료 처리"로 수동 처리 (BestClub의 `autoReleaseExpiredEscrow`도 미배포) |
 | 베트남 전자상거래·에스크로 법률 | 사전 검토 미완료 |
+
+## BM 결제가 막힌 이유
+
+`jumper_v10/functions/handlers/transaction.js`를 직접 확인한 결과입니다.
+
+1. **`payServiceJobEscrow`는 Firestore `service_jobs/{serviceJobId}` 문서가
+   `status='accepted'`로 이미 존재해야 동작합니다** (`transaction.js:1656-1658`).
+   그 문서를 만드는 코드가 BestClub 전체에 없고, `CHANGE_PROPOSAL_BESTCLUB.md`
+   CP-4 규칙상 `service_jobs` 생성은 `isStaff()` 전용이라 클라이언트가 만들 수 없습니다.
+   → BM 결제를 시도하면 `서비스 잡 없음`으로 100% 실패합니다.
+2. **최소 결제 금액 10,000 VND** (`transaction.js:1636`). 클라이언트에서 미리 차단합니다.
+3. **에스크로는 기술자가 아니라 가맹점주(`merchants.ownerUid`)에게 해제됩니다**
+   (`transaction.js:1774-1777`). Supabase `settlements`는 가맹점이 기술자에게
+   지급해야 할 금액의 기록이며, 자동 지급이 아닙니다.
+4. **BestClub이 이미 가맹점 수수료를 뗍니다** (`feeBps`, 기본 1000 = 10%).
+   `escrowVnd = amountVnd - feeVnd`. 따라서 `generate_settlement`은 BM 분에
+   `platform_fee_rate`를 다시 적용하지 않습니다 (`settlements.bm_amount` 참조).
+5. **멱등성은 안전합니다.** `payServiceJobEscrow`는 `accepted → paid`,
+   `releaseEscrow`는 `paid|done_claimed → completed`로만 전이하므로
+   두 번째 호출은 상태 검사에서 거부됩니다.
+
+해결에는 `jumper_v10`에 `service_jobs` 문서를 만드는 Callable 추가가 필요합니다.
+제안서는 `베스트마리오/docs/CHANGE_PROPOSAL_BESTCLUB.md`의 **CP-6**에 있습니다.
+오너 승인과 `firebase deploy`가 필요한 공유 프로젝트 변경입니다.
+
+## Cloud Function 리전
+
+BestClub의 Cloud Function은 **전부 `us-central1`** 입니다
+(`firebase functions:list --project jumper-b15aa` 기준 275개 전부).
+`web/src/lib/firebase.ts`가 `asia-northeast3`를 가리키고 있어서
+`merchantMemberJoin`·`payServiceJobEscrow`·`releaseEscrow` 호출이 모두
+`not-found`로 실패하던 문제를 `us-central1`로 고쳤습니다.
+
+이 때문에 **가맹점주 멘토 자동 지정이 그동안 조용히 실패**하고 있었습니다
+(로그인 핸들러가 해당 오류를 무시하도록 작성되어 있었음).

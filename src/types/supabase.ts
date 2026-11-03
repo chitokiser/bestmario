@@ -89,6 +89,8 @@ export interface Settlement {
   order_id: string;
   technician_uid: string;
   gross_amount: number;
+  /** BestClub 에스크로로 들어온 금액. BestClub 수수료가 이미 차감된 상태라 플랫폼 수수료를 다시 적용하지 않는다. */
+  bm_amount: number;
   fee_rate: number;
   net_amount: number;
   settled_at: string;
