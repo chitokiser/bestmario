@@ -1,0 +1,33 @@
+{
+  "home": {
+    "tagline": "Dịch vụ tại nhà hàng đầu Hà Nội — Thợ chuyên nghiệp đến tận nơi",
+    "hero_title": "BestMario",
+    "hero_subtitle": "Sửa điện · Sửa ống nước · Điều hòa · Và nhiều dịch vụ khác",
+    "cta_request": "Yêu cầu dịch vụ",
+    "cta_quote": "Báo giá ngay",
+    "services_title": "Dịch vụ của chúng tôi",
+    "services_pending_setup": "Dịch vụ đang được cập nhật. Vui lòng quay lại sớm.",
+    "bt_policy": "Chính sách BT",
+    "bt_description": "Mỗi lần sử dụng dịch vụ, bạn tích lũy BT (Bonus Ticket) để đổi ưu đãi tại BestClub. BT không có giá trị tiền mặt nhưng được dùng trong các chương trình khuyến mãi đặc biệt.",
+    "bt_per_vnd": "= 1 BT",
+    "bt_stock": "BT hiện có",
+    "join_title": "Tham gia BestClub",
+    "join_subtitle": "Nhận ưu đãi độc quyền cho thành viên BestClub",
+    "trust_verified": "Thợ xác minh",
+    "trust_warranty": "Bảo hành dịch vụ",
+    "trust_multilang": "Hỗ trợ KO · EN · VI",
+    "webzine_title": "Tin tức & Mẹo vặt",
+    "area_title": "Khu vực phục vụ"
+  },
+  "common": {
+    "loading": "Đang tải...",
+    "error": "Có lỗi xảy ra",
+    "back": "Quay lại",
+    "confirm": "Xác nhận",
+    "cancel": "Hủy",
+    "login": "Đăng nhập",
+    "logout": "Đăng xuất",
+    "join_processing": "Đang xử lý...",
+    "no_items": "Chưa có dịch vụ nào"
+  }
+}

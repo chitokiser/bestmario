@@ -1,0 +1,33 @@
+{
+  "home": {
+    "tagline": "하노이 최고의 홈서비스 — 전문 기술자가 직접 방문합니다",
+    "hero_title": "베스트마리오",
+    "hero_subtitle": "전기 · 배관 · 에어컨 · 그 외 다양한 서비스",
+    "cta_request": "서비스 신청",
+    "cta_quote": "즉시 견적",
+    "services_title": "서비스 목록",
+    "services_pending_setup": "서비스 준비 중입니다. 곧 업데이트될 예정입니다.",
+    "bt_policy": "BT 정책",
+    "bt_description": "서비스 이용 시 BT(보너스 티켓)를 적립해 BestClub 혜택으로 교환하세요. BT는 현금 가치는 없지만 특별 프로모션에 사용됩니다.",
+    "bt_per_vnd": "= 1 BT",
+    "bt_stock": "현재 BT",
+    "join_title": "베스트클럽 가입",
+    "join_subtitle": "베스트클럽 회원 전용 혜택을 받으세요",
+    "trust_verified": "인증된 기술자",
+    "trust_warranty": "서비스 보증",
+    "trust_multilang": "KO · EN · VI 지원",
+    "webzine_title": "뉴스 & 팁",
+    "area_title": "서비스 지역"
+  },
+  "common": {
+    "loading": "로딩 중...",
+    "error": "오류가 발생했습니다",
+    "back": "뒤로",
+    "confirm": "확인",
+    "cancel": "취소",
+    "login": "로그인",
+    "logout": "로그아웃",
+    "join_processing": "처리 중...",
+    "no_items": "등록된 서비스가 없습니다"
+  }
+}

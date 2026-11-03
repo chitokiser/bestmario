@@ -1,0 +1,33 @@
+{
+  "home": {
+    "tagline": "Hanoi's best home services — Professional technicians at your door",
+    "hero_title": "BestMario",
+    "hero_subtitle": "Electrical · Plumbing · Air Conditioning · And more",
+    "cta_request": "Request Service",
+    "cta_quote": "Get a Quote",
+    "services_title": "Our Services",
+    "services_pending_setup": "Services are being set up. Please check back soon.",
+    "bt_policy": "BT Policy",
+    "bt_description": "Earn BT (Bonus Tickets) with every service booking and redeem them for rewards at BestClub. BT has no cash value but can be used in special promotions.",
+    "bt_per_vnd": "= 1 BT",
+    "bt_stock": "BT available",
+    "join_title": "Join BestClub",
+    "join_subtitle": "Exclusive benefits for BestClub members",
+    "trust_verified": "Verified technicians",
+    "trust_warranty": "Service warranty",
+    "trust_multilang": "KO · EN · VI support",
+    "webzine_title": "News & Tips",
+    "area_title": "Service areas"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "back": "Back",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "login": "Log in",
+    "logout": "Log out",
+    "join_processing": "Processing...",
+    "no_items": "No services available"
+  }
+}
