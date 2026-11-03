@@ -1,11 +1,13 @@
 'use client';
 
-import { use } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useAuthState } from '@/hooks/useAuthState';
-import type { UserRole } from '@/types/supabase';
+import { useSupabase } from '@/hooks/useSupabase';
+import ApplicationStatus from '@/components/ApplicationStatus';
+import type { TechnicianProfile, UserRole } from '@/types/supabase';
 
 const ROLE_LABEL: Record<UserRole, { ko: string; vi: string; en: string }> = {
   customer:   { ko: '고객',   vi: 'Khách hàng',    en: 'Customer' },
@@ -19,6 +21,25 @@ export default function MyPage({ params }: { params: Promise<{ locale: string }>
   const { locale } = use(params);
   const router = useRouter();
   const { user, wallets, role, roleLoading, authLoading } = useAuthState();
+  const supabase = useSupabase();
+  const [application, setApplication] = useState<TechnicianProfile | null>(null);
+
+  // 기술자 신청 진행상태 (신청 이력이 있는 계정만)
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void supabase
+      .from('technician_profiles')
+      .select('*')
+      .eq('uid', user.uid)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setApplication((data ?? null) as TechnicianProfile | null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, user]);
 
   const t = (ko: string, vi: string, en: string) =>
     locale === 'vi' ? vi : locale === 'en' ? en : ko;
@@ -50,7 +71,7 @@ export default function MyPage({ params }: { params: Promise<{ locale: string }>
       rows.push({ icon: '🛡️', label: t('관리자 화면', 'Trang quản trị', 'Admin console'), href: '/admin' });
     } else if (role === 'technician') {
       rows.push({ icon: '🧰', label: t('기술자 화면', 'Trang kỹ thuật viên', 'Technician dashboard'), href: '/technician' });
-    } else if (role === 'customer') {
+    } else if (role === 'customer' && !application) {
       rows.push({
         icon: '🧰',
         label: t('기술자로 등록하기', 'Đăng ký kỹ thuật viên', 'Register as technician'),
@@ -149,6 +170,16 @@ export default function MyPage({ params }: { params: Promise<{ locale: string }>
                 ))}
               </div>
             </section>
+
+            {application && (
+              <div className="mt-3">
+                <ApplicationStatus
+                  profile={application}
+                  locale={locale}
+                  onAction={(path) => router.push(`/${locale}${path}`)}
+                />
+              </div>
+            )}
 
             <section className="mt-3 overflow-hidden rounded-2xl border" style={SURFACE}>
               {rows.map((r, i) => (
