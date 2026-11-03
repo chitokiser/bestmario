@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useSupabase } from '@/hooks/useSupabase';
+import PushBanner from '@/components/PushBanner';
 import type { TechnicianProfile } from '@/types/supabase';
 
 const NAV = [
@@ -205,7 +206,10 @@ export default function TechnicianLayout({
       </header>
 
       <div className="flex-1 px-4 py-5">
-        <div className="mx-auto w-full max-w-lg">{children}</div>
+        <div className="mx-auto w-full max-w-lg">
+          {profile?.status === 'active' && <PushBanner locale={locale} />}
+          {children}
+        </div>
       </div>
 
       <nav
