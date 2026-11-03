@@ -3,6 +3,9 @@
 :root {
   --color-primary: #E53935;
   --color-primary-dark: #B71C1C;
+  /* 캐릭터 작업복과 같은 네이비 계열을 보조색으로 쓴다 */
+  --color-navy: #1F3A5F;
+  --color-navy-deep: #13263E;
   --color-accent: #FFC107;
   --color-bg: #ffffff;
   --color-text: #111827;
@@ -11,14 +14,14 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-bg: #111827;
+    --color-bg: #0F1A2A;
     --color-text: #F9FAFB;
     --color-muted: #9CA3AF;
   }
 }
 
 :root[data-theme="dark"] {
-  --color-bg: #111827;
+  --color-bg: #0F1A2A;
   --color-text: #F9FAFB;
   --color-muted: #9CA3AF;
 }

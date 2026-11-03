@@ -160,10 +160,10 @@ export default function LandingClient({ locale }: { locale: string }) {
       >
         <a href="#" className="flex items-center">
           <Image
-            src="/bestmario-logo.png"
+            src="/bestmario-logo.webp"
             alt="BestMario"
-            width={140}
-            height={47}
+            width={480}
+            height={155}
             priority
             className="h-10 w-auto"
           />
@@ -212,60 +212,96 @@ export default function LandingClient({ locale }: { locale: string }) {
 
       {/* ── Hero ── */}
       <section
-        className="relative flex flex-col items-center justify-center text-center px-6 py-16 gap-4"
-        style={{
-          background: 'linear-gradient(160deg, #E53935 0%, #B71C1C 100%)',
-          minHeight: '55vw',
-          maxHeight: '500px',
-        }}
+        className="relative overflow-hidden"
+        style={{ background: 'linear-gradient(160deg, #B71C1C 0%, #E53935 52%, #C62828 100%)' }}
       >
-        {/* Logo */}
-        <Image
-          src="/bestmario-logo.png"
-          alt="BestMario"
-          width={280}
-          height={93}
-          priority
-          className="h-20 w-auto drop-shadow-md"
+        {/* 배경 원형 장식 */}
+        <div
+          className="absolute top-0 right-0 rounded-full opacity-10"
+          style={{ width: '300px', height: '300px', background: 'white', transform: 'translate(80px, -80px)' }}
         />
-        {/* Merchant name or BestMario default */}
-        <h1 className="text-4xl font-extrabold text-white tracking-tight drop-shadow-sm">
-          {merchantLoading ? 'BestMario' : (merchant?.name ?? 'BestMario')}
-        </h1>
-        <p className="text-white/90 text-base max-w-xs leading-relaxed">
-          {t('tagline')}
-        </p>
+        <div
+          className="absolute bottom-0 left-0 rounded-full opacity-10"
+          style={{ width: '200px', height: '200px', background: 'white', transform: 'translate(-60px, 60px)' }}
+        />
 
-        {/* BT reward badge */}
-        {btPerVnd ? (
-          <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2 text-white text-sm font-semibold">
-            🎟️ {formatVND(btPerVnd)} {t('bt_per_vnd')} · {t('bt_stock')}: {btStock.toLocaleString()}
-          </div>
-        ) : (
-          <div className="inline-flex items-center gap-2 bg-white/15 rounded-full px-4 py-2 text-white/80 text-sm">
-            🎟️ {t('bt_policy')}
-          </div>
-        )}
+        {/* 네이비 바닥: 캐릭터가 딛고 설 지면이자 아래 신뢰 배지로 이어지는 보조색 */}
+        <div
+          className="absolute inset-x-0 bottom-0 pointer-events-none"
+          style={{
+            height: '160px',
+            background: 'linear-gradient(to top, rgba(19,38,62,1) 0%, rgba(19,38,62,0.88) 25%, rgba(19,38,62,0.45) 60%, rgba(19,38,62,0) 100%)',
+          }}
+        />
 
-        {/* CTA buttons */}
-        <div className="flex gap-3 mt-2 flex-wrap justify-center">
-          <button
-            onClick={handleRequestService}
-            className="px-6 py-3 rounded-xl bg-white font-bold text-red-600 text-sm shadow-lg hover:shadow-xl active:scale-95 transition-all"
+        {/* 넓은 화면에서 텍스트와 캐릭터가 양 끝으로 벌어지지 않도록 묶어 가운데 정렬한다 */}
+        <div
+          className="relative mx-auto flex w-full max-w-[680px] items-center"
+          style={{ minHeight: 'clamp(380px, 52vw, 520px)' }}
+        >
+          {/* 캐릭터: 히어로의 주인공. 오른쪽 바닥에 세운다.
+              높이를 영역에 맞추므로 화면이 넓어져도 머리가 잘리지 않는다. */}
+          <div
+            className="absolute right-0 top-0 bottom-0 pointer-events-none select-none"
+            style={{ width: 'min(50%, 290px)' }}
           >
-            {t('cta_request')}
-          </button>
-          <button
-            onClick={handleRequestService}
-            className="px-6 py-3 rounded-xl border-2 border-white text-white font-bold text-sm hover:bg-white/10 active:scale-95 transition-all"
+            <Image
+              src="/bestmario-character.webp"
+              alt=""
+              aria-hidden
+              fill
+              priority
+              className="object-contain object-bottom"
+              style={{ filter: 'drop-shadow(0 14px 20px rgba(9,20,34,0.35))' }}
+              sizes="(max-width: 640px) 50vw, 290px"
+            />
+          </div>
+
+          {/* 텍스트: 캐릭터 폭만큼 오른쪽을 비워 둔다 */}
+          <div
+            className="relative flex w-full flex-col gap-3 px-5 pt-7 pb-9"
+            style={{ paddingRight: 'min(44%, 300px)', wordBreak: 'keep-all' }}
           >
-            {t('cta_quote')}
-          </button>
+            <h1 className="text-[28px] font-extrabold text-white tracking-tight leading-[1.1] drop-shadow-sm">
+              {merchantLoading ? 'BestMario' : (merchant?.name ?? 'BestMario')}
+            </h1>
+
+            <p className="text-white/90 text-xs leading-relaxed">
+              {t('tagline')}
+            </p>
+
+            {btPerVnd ? (
+              <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5 text-white text-[11px] font-semibold w-fit">
+                🎟️ {formatVND(btPerVnd)} {t('bt_per_vnd')} · {t('bt_stock')}: {btStock.toLocaleString()}
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1.5 text-white/80 text-[11px] w-fit">
+                🎟️ {t('bt_policy')}
+              </div>
+            )}
+
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={handleRequestService}
+                className="px-4 py-2.5 rounded-xl bg-white font-bold text-xs shadow-lg hover:shadow-xl active:scale-95 transition-all"
+                style={{ color: 'var(--color-primary)' }}
+              >
+                {t('cta_request')}
+              </button>
+              <button
+                onClick={handleRequestService}
+                className="px-4 py-2.5 rounded-xl text-white font-bold text-xs active:scale-95 transition-all"
+                style={{ background: 'var(--color-navy)' }}
+              >
+                {t('cta_quote')}
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ── Trust badges ── */}
-      <section className="px-4 py-6 flex justify-center">
+      {/* ── Trust badges: 히어로의 네이비 바닥을 그대로 이어받는다 ── */}
+      <section className="px-4 py-6 flex justify-center" style={{ background: 'var(--color-navy-deep)' }}>
         <div className="grid grid-cols-3 gap-3 w-full max-w-sm">
           {[
             { icon: '✅', label: t('trust_verified') },
@@ -274,10 +310,10 @@ export default function LandingClient({ locale }: { locale: string }) {
           ].map(({ icon, label }) => (
             <div
               key={label}
-              className="flex flex-col items-center gap-1 p-3 rounded-xl bg-gray-50 text-center"
+              className="flex flex-col items-center gap-1 p-3 rounded-xl bg-white/5 text-center"
             >
               <span className="text-2xl">{icon}</span>
-              <span className="text-xs text-gray-600 font-medium leading-tight">{label}</span>
+              <span className="text-xs text-white/70 font-medium leading-tight">{label}</span>
             </div>
           ))}
         </div>
