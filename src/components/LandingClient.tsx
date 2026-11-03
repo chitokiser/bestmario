@@ -389,8 +389,14 @@ export default function LandingClient({ locale }: { locale: string }) {
         }
       }
       setJoinLoading(false);
-    } catch {
-      // 팝업 닫음 또는 취소 무시
+    } catch (e) {
+      // 사용자가 팝업을 닫거나 취소한 경우만 조용히 넘기고, 그 외는 사유를 드러낸다.
+      // 전부 삼키면 설정 오류(승인 도메인 누락 등)가 화면에 아무 신호 없이 사라진다.
+      const code = (e as { code?: string })?.code ?? 'unknown';
+      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
+        console.error('[auth] 로그인 실패', code, e);
+        alert(`로그인에 실패했습니다 (${code})`);
+      }
     }
   };
 
