@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { onIdTokenChanged } from 'firebase/auth';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { auth } from '@/lib/firebase';
@@ -17,6 +17,43 @@ function getClient(idToken?: string): SupabaseClient {
   return cachedClient;
 }
 
+// 토큰은 모듈 하나가 들고 모든 컴포넌트가 같은 값을 읽는다.
+// 컴포넌트마다 토큰 상태를 따로 두면 도착 시점이 어긋난 컴포넌트들이 렌더할 때마다
+// 전역 클라이언트를 서로 바꿔 끼워, 재조회·리마운트가 끝없이 반복된다.
+let currentToken: string | undefined;
+const listeners = new Set<() => void>();
+let started = false;
+
+function setToken(token: string | undefined) {
+  if (token === currentToken) return;
+  currentToken = token;
+  listeners.forEach((l) => l());
+}
+
+function start() {
+  if (started) return;
+  started = true;
+  onIdTokenChanged(auth, async (u) => {
+    if (!u) {
+      setToken(undefined);
+      return;
+    }
+    try {
+      setToken(await u.getIdToken());
+    } catch {
+      setToken(undefined);
+    }
+  });
+}
+
+function subscribe(listener: () => void) {
+  start();
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
 /**
  * Firebase ID 토큰이 적용된 Supabase 클라이언트.
  *
@@ -26,24 +63,10 @@ function getClient(idToken?: string): SupabaseClient {
  * 의존성에 넣어 토큰 도착 시 재조회해야 한다.
  */
 export function useSupabase(): SupabaseClient {
-  // 새로 마운트되는 컴포넌트가 비인증(undefined)으로 시작하면 전역 캐시가 비인증 클라이언트로
-  // 덮어써져 다른 컴포넌트의 supabase 가 바뀌고, 재조회 → 리마운트가 끝없이 반복된다.
-  // 이미 받아 둔 토큰으로 시작해 캐시를 유지한다.
-  const [idToken, setIdToken] = useState<string | undefined>(cachedToken);
-
-  useEffect(() => {
-    return onIdTokenChanged(auth, async (u) => {
-      if (!u) {
-        setIdToken(undefined);
-        return;
-      }
-      try {
-        setIdToken(await u.getIdToken());
-      } catch {
-        setIdToken(undefined);
-      }
-    });
-  }, []);
-
+  const idToken = useSyncExternalStore(
+    subscribe,
+    () => currentToken,
+    () => undefined
+  );
   return getClient(idToken);
 }

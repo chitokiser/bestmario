@@ -10,11 +10,11 @@ import type { Quotation, ServiceCategory } from '@/types/supabase';
 
 interface DraftState {
   price: string;
-  durationMin: string;
+  durationHours: string;
   note: string;
 }
 
-const EMPTY_DRAFT: DraftState = { price: '', durationMin: '', note: '' };
+const EMPTY_DRAFT: DraftState = { price: '', durationHours: '', note: '' };
 
 export default function TechnicianQuotesPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = use(params);
@@ -58,6 +58,15 @@ export default function TechnicianQuotesPage({ params }: { params: Promise<{ loc
     void loadMyQuotes();
   }, [loadMyQuotes]);
 
+  // 저장값은 분 — 화면에는 시간(+분)으로 보여 준다
+  const durationText = (min: number) => {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    const hu = t('시간', 'giờ', 'h');
+    const mu = t('분', 'phút', 'm');
+    return h === 0 ? `${m}${mu}` : m === 0 ? `${h}${hu}` : `${h}${hu} ${m}${mu}`;
+  };
+
   const quoteRequests = pendingOrders.filter((o) => o.order_type === 'quote_request');
 
   const quoteFor = (orderId: string) => myQuotes.find((q) => q.order_id === orderId) ?? null;
@@ -73,10 +82,11 @@ export default function TechnicianQuotesPage({ params }: { params: Promise<{ loc
     if (submitting || !user) return;
 
     const price = Number(draft.price);
-    const duration = Number(draft.durationMin);
+    // 입력은 시간 단위(소수 가능), 저장은 분 단위
+    const duration = Math.round(Number(draft.durationHours) * 60);
 
     if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(duration) || duration <= 0) {
-      setError(t('금액과 예상 소요시간을 올바르게 입력해 주세요.', 'Hãy nhập đúng giá và thời gian dự kiến.', 'Enter a valid price and duration.'));
+      setError(t('금액과 예상 소요시간(시간)을 올바르게 입력해 주세요.', 'Hãy nhập đúng giá và thời gian dự kiến (giờ).', 'Enter a valid price and duration (hours).'));
       return;
     }
 
@@ -174,8 +184,7 @@ export default function TechnicianQuotesPage({ params }: { params: Promise<{ loc
                   // 제출한 견적은 수정 불가 (unique(order_id, technician_uid))
                   <div className="mt-3 rounded-xl p-3" style={{ background: 'var(--color-bg, #f7f7f8)' }}>
                     <p className="text-xs font-bold" style={{ color: 'var(--color-primary)' }}>
-                      {t('제출 완료', 'Đã gửi', 'Submitted')} · {formatVND(mine.price)} · {mine.duration_min}
-                      {t('분', ' phút', 'm')}
+                      {t('제출 완료', 'Đã gửi', 'Submitted')} · {formatVND(mine.price)} · {durationText(mine.duration_min)}
                     </p>
                     <p className="mt-1 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
                       {t('제출한 견적은 수정할 수 없습니다.', 'Báo giá đã gửi không thể sửa.', 'A submitted quote cannot be edited.')}
@@ -194,10 +203,11 @@ export default function TechnicianQuotesPage({ params }: { params: Promise<{ loc
                     />
                     <input
                       type="number"
-                      min={1}
-                      value={draft.durationMin}
-                      onChange={(e) => setDraft({ ...draft, durationMin: e.target.value })}
-                      placeholder={t('예상 소요시간 (분)', 'Thời gian dự kiến (phút)', 'Estimated duration (min)')}
+                      min={0.5}
+                      step="0.5"
+                      value={draft.durationHours}
+                      onChange={(e) => setDraft({ ...draft, durationHours: e.target.value })}
+                      placeholder={t('예상 소요시간 (시간, 예: 2 또는 1.5)', 'Thời gian dự kiến (giờ, vd: 2 hoặc 1.5)', 'Estimated duration (hours, e.g. 2 or 1.5)')}
                       className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none"
                       style={{ background: 'var(--color-bg, #f7f7f8)', borderColor: 'var(--color-border, #ebebed)', color: 'var(--color-text)' }}
                     />
