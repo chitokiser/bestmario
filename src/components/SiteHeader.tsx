@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useLogin } from '@/hooks/useLogin';
+import { useSyncEmail } from '@/hooks/useSyncEmail';
 
 const LOCALES = [
   { code: 'vi', label: 'VI' },
@@ -22,6 +23,7 @@ export default function SiteHeader({ locale }: { locale: string }) {
   const pathname = usePathname();
   const { user, authLoading } = useAuthState();
   const { login, joinLoading } = useLogin(locale);
+  useSyncEmail();
 
   const homePath = locale === 'vi' ? '/' : `/${locale}`;
 

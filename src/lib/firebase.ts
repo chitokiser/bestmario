@@ -46,3 +46,13 @@ export const callPayServiceJobEscrow = (
 
 export const callReleaseEscrow = (serviceJobId: string) =>
   httpsCallable(functions, 'releaseEscrow')({ serviceJobId });
+
+/**
+ * 운영자(가맹점 주인) 계정이 자기 BT 를 고객에게 보낸다. BestClub 의 기존 callable.
+ * 고객은 이메일로 찾고, BT 수량은 금액 / 가맹점 btPerVnd (기본 100,000 VND = 1 BT).
+ */
+export const callMerchantSendBtDirect = (customerEmail: string, amountVnd: number) =>
+  httpsCallable<{ customerEmail: string; amountVnd: number }, { success: boolean; btIssued: number; customerEmail: string }>(
+    functions,
+    'merchantSendBtDirect'
+  )({ customerEmail, amountVnd });

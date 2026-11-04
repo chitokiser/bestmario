@@ -25,7 +25,6 @@ const METHODS: { id: PaymentMethod; icon: string; ko: string; vi: string; en: st
   { id: 'vietqr', icon: '🏦', ko: '은행 이체(VietQR)', vi: 'Chuyển khoản (VietQR)', en: 'Bank transfer (VietQR)' },
   { id: 'momo',   icon: '📱', ko: 'MoMo',              vi: 'MoMo',                  en: 'MoMo' },
   { id: 'bm',     icon: '💎', ko: 'BM 포인트',          vi: 'Điểm BM',               en: 'BM points' },
-  { id: 'cash',   icon: '💵', ko: '현장 현금',          vi: 'Tiền mặt tại nhà',      en: 'Cash on site' },
 ];
 
 function L(locale: string, ko: string, vi: string, en: string) {
@@ -48,6 +47,8 @@ export default function PaymentSheet({
 }) {
   const supabase = useSupabase();
   const { user, wallets } = useAuthState();
+  const [bank, setBank] = useState<{ name: string; account: string; holder: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const [method, setMethod] = useState<PaymentMethod>('vietqr');
   const [remainMethod, setRemainMethod] = useState<RemainMethod>('vietqr');
@@ -74,6 +75,37 @@ export default function PaymentSheet({
     })();
     return () => { cancelled = true; };
   }, [supabase]);
+
+  // 현금(계좌 이체)은 플랫폼이 지정한 계좌로만 받는다. 계좌 정보는 관리자가 service_settings 에 입력한다.
+  useEffect(() => {
+    let alive = true;
+    void supabase
+      .from('service_settings')
+      .select('key, value')
+      .in('key', ['bank_name', 'bank_account', 'bank_holder'])
+      .then(({ data }) => {
+        if (!alive) return;
+        const v = (k: string) => (data ?? []).find((r) => r.key === k)?.value ?? '';
+        setBank({ name: v('bank_name'), account: v('bank_account'), holder: v('bank_holder') });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [supabase]);
+
+  const transferMemo = `BM-${orderId.slice(0, 8).toUpperCase()}`;
+  const showBank = method === 'vietqr' || (method === 'bm' && needsMixed && remainMethod === 'vietqr');
+
+  const copyAccount = async () => {
+    if (!bank?.account) return;
+    try {
+      await navigator.clipboard.writeText(bank.account);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // 복사 권한이 없으면 화면의 번호를 직접 복사하면 된다
+    }
+  };
 
   const insertPayment = useMemo(
     () => async (m: PaymentMethod, amt: number) => {
@@ -225,9 +257,9 @@ export default function PaymentSheet({
       case 'cash':
         return L(
           locale,
-          '작업 완료 후 현장에서 현금으로 결제합니다. 관리자 입금 확인 후 처리됩니다.',
-          'Thanh toán tiền mặt tại nhà sau khi hoàn thành. Xử lý sau khi quản trị xác nhận.',
-          'Pay cash on site after the work. Processed after admin confirmation.'
+          '현금은 플랫폼 지정 계좌로 이체해 주세요.',
+          'Vui lòng chuyển khoản vào tài khoản do nền tảng chỉ định.',
+          'Please transfer cash to the platform-designated account.'
         );
       case 'vietqr':
         return L(
@@ -336,6 +368,48 @@ export default function PaymentSheet({
                 ))}
               </select>
             </>
+          )}
+        </div>
+      )}
+
+      {showBank && (
+        <div className="rounded-xl border p-4 space-y-1.5" style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-primary)' }}>
+          <p className="text-xs font-extrabold" style={{ color: 'var(--color-primary)' }}>
+            🏦 {L(locale, '입금 계좌 (BestMario 지정 계좌)', 'Tài khoản nhận tiền (do BestMario chỉ định)', 'Transfer to this account (designated by BestMario)')}
+          </p>
+          {bank && bank.account ? (
+            <>
+              <p className="text-sm" style={{ color: 'var(--color-text)' }}>
+                {bank.name} · <span className="font-mono font-bold">{bank.account}</span>
+              </p>
+              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                {L(locale, '예금주', 'Chủ tài khoản', 'Account holder')}: {bank.holder}
+              </p>
+              <p className="text-xs" style={{ color: 'var(--color-text)' }}>
+                {L(locale, '입금액', 'Số tiền', 'Amount')}: <b>{formatVND(needsMixed ? bmRemain : amount)}</b>
+                {' · '}
+                {L(locale, '입금 메모', 'Nội dung CK', 'Transfer note')}: <span className="font-mono font-bold">{transferMemo}</span>
+              </p>
+              <button
+                onClick={() => void copyAccount()}
+                className="mt-1 rounded-lg px-3 py-1.5 text-xs font-bold text-white"
+                style={{ background: 'var(--color-navy, #1A237E)' }}
+              >
+                {copied ? `✓ ${L(locale, '복사됨', 'Đã sao chép', 'Copied')}` : L(locale, '계좌번호 복사', 'Sao chép số tài khoản', 'Copy account number')}
+              </button>
+              <p className="text-[11px] pt-1" style={{ color: 'var(--color-text-muted)' }}>
+                {L(
+                  locale,
+                  '현금은 반드시 위 계좌로 이체해 주세요. 기술자에게 직접 지급하지 마세요. 입금 메모에 주문 코드를 적으면 확인이 빨라요.',
+                  'Hãy chuyển khoản vào tài khoản trên, không trả tiền trực tiếp cho kỹ thuật viên. Ghi mã đơn ở nội dung để được xác nhận nhanh.',
+                  'Please transfer to the account above — do not pay the technician directly. Include the order code in the note for faster confirmation.'
+                )}
+              </p>
+            </>
+          ) : (
+            <p className="text-xs" style={{ color: '#D32F2F' }}>
+              {L(locale, '입금 계좌 정보가 아직 등록되지 않았어요. 관리자에게 문의해 주세요.', 'Chưa có thông tin tài khoản. Vui lòng liên hệ quản trị.', 'The bank account is not set up yet. Please contact the admin.')}
+            </p>
           )}
         </div>
       )}

@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import { useSupabase } from '@/hooks/useSupabase';
 import { useAuthState } from '@/hooks/useAuthState';
 import { formatDateTime, formatVND } from '@/lib/format';
+import TechnicianBankForm from '@/components/TechnicianBankForm';
 import type { Settlement } from '@/types/supabase';
 
 export default function TechnicianSettlementsPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -56,6 +57,8 @@ export default function TechnicianSettlementsPage({ params }: { params: Promise<
 
       {error && <p className="text-xs font-semibold" style={{ color: '#D32F2F' }}>{error}</p>}
 
+      <TechnicianBankForm locale={locale} />
+
       {/* 합계 */}
       <div className="rounded-2xl p-5" style={{ background: 'var(--color-primary-bg, #FFEBEE)' }}>
         <p className="text-xs font-semibold mb-1" style={{ color: 'var(--color-text-2)' }}>
@@ -73,9 +76,9 @@ export default function TechnicianSettlementsPage({ params }: { params: Promise<
             기술자 지갑에 직접 들어오지 않으므로 "수령 완료" 로 표현하지 않는다. */}
         <p className="mt-2 text-[11px] leading-relaxed" style={{ color: 'var(--color-text-2, #5c5c6e)' }}>
           {t(
-            '이 금액은 가맹점이 지급해야 할 정산액입니다. 실제 지급 일정과 방법은 가맹점에 확인해 주세요.',
-            'Đây là số tiền cửa hàng phải thanh toán cho bạn. Hãy xác nhận lịch và cách thanh toán với cửa hàng.',
-            'This is the amount the franchise owes you. Confirm the payout schedule and method with them.'
+            '고객이 플랫폼 계좌로 낸 금액에서 수수료를 뺀 정산액이에요. 아래 "정산 입금 계좌"로 입금되고, 입금되면 각 정산에 "지급 완료"가 표시됩니다.',
+            'Đây là số tiền sau khi trừ phí từ khoản khách trả vào tài khoản nền tảng. Sẽ được chuyển vào tài khoản bên dưới và đánh dấu "Đã chi trả".',
+            'This is what the customer paid to the platform account, minus the fee. It is deposited to your payout account below and marked "Paid".'
           )}
         </p>
       </div>
@@ -103,6 +106,11 @@ export default function TechnicianSettlementsPage({ params }: { params: Promise<
                   {formatVND(s.net_amount)}
                 </span>
               </div>
+              <p className="mt-1 text-[11px] font-bold" style={{ color: s.payout_status === 'paid' ? '#2E7D32' : '#E65100' }}>
+                {s.payout_status === 'paid'
+                  ? `✓ ${t('지급 완료', 'Đã chi trả', 'Paid')}${s.paid_at ? ` · ${formatDateTime(s.paid_at, locale)}` : ''}`
+                  : `⏳ ${t('입금 대기', 'Chờ chuyển khoản', 'Awaiting payout')}`}
+              </p>
               <p className="mt-1.5 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
                 {t('총액', 'Tổng', 'Gross')} {formatVND(s.gross_amount)}
                 {' · '}

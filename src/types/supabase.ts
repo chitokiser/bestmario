@@ -17,6 +17,7 @@ export interface DbUser {
   name: string;
   phone: string;
   lang: string;
+  email: string;
   created_at: string;
 }
 
@@ -32,6 +33,9 @@ export interface TechnicianProfile {
   bio: string;
   submitted_at: string | null;
   reject_reason: string;
+  bank_name: string;
+  bank_account: string;
+  bank_holder: string;
 }
 
 export interface ServiceCategory {
@@ -106,6 +110,10 @@ export interface Settlement {
   fee_rate: number;
   net_amount: number;
   settled_at: string;
+  payout_status: 'pending' | 'paid';
+  paid_at: string | null;
+  payout_ref: string;
+  payout_bank: string;
 }
 
 export interface Warranty {
@@ -196,4 +204,17 @@ export interface MarketProduct {
   tech_rating: number;
   tech_reviews: number;
   tech_done: number;
+}
+
+export interface BtGrant {
+  id: string;
+  order_id: string;
+  customer_uid: string;
+  amount_vnd: number;
+  bt_issued: number | null;
+  status: 'pending' | 'sent' | 'failed';
+  error: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 }

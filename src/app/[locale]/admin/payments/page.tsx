@@ -3,6 +3,8 @@
 import { use, useCallback, useEffect, useState } from 'react';
 import { useSupabase } from '@/hooks/useSupabase';
 import { formatDateTime, formatVND } from '@/lib/format';
+import AdminPayouts from '@/components/AdminPayouts';
+import AdminBtGrants from '@/components/AdminBtGrants';
 import type { Payment, PaymentStatus, ServiceSetting } from '@/types/supabase';
 
 const STATUS_STYLE: Record<PaymentStatus, { color: string; bg: string; ko: string; vi: string; en: string }> = {
@@ -26,6 +28,9 @@ export default function AdminPaymentsPage({ params }: { params: Promise<{ locale
   const [settings, setSettings] = useState<ServiceSetting[]>([]);
   const [bmRate, setBmRate] = useState('');
   const [feeRate, setFeeRate] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankAccount, setBankAccount] = useState('');
+  const [bankHolder, setBankHolder] = useState('');
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -52,6 +57,9 @@ export default function AdminPaymentsPage({ params }: { params: Promise<{ locale
     setSettings(rows);
     setBmRate(rows.find((s) => s.key === 'bm_rate_vnd')?.value ?? '');
     setFeeRate(rows.find((s) => s.key === 'platform_fee_rate')?.value ?? '');
+    setBankName(rows.find((s) => s.key === 'bank_name')?.value ?? '');
+    setBankAccount(rows.find((s) => s.key === 'bank_account')?.value ?? '');
+    setBankHolder(rows.find((s) => s.key === 'bank_holder')?.value ?? '');
     setLoading(false);
   }, [supabase]);
 
@@ -119,6 +127,9 @@ export default function AdminPaymentsPage({ params }: { params: Promise<{ locale
         [
           { key: 'bm_rate_vnd', value: String(rate) },
           { key: 'platform_fee_rate', value: fee.toFixed(3) },
+          { key: 'bank_name', value: bankName.trim() },
+          { key: 'bank_account', value: bankAccount.trim() },
+          { key: 'bank_holder', value: bankHolder.trim() },
         ],
         { onConflict: 'key' }
       );
@@ -190,6 +201,18 @@ export default function AdminPaymentsPage({ params }: { params: Promise<{ locale
           </p>
         </div>
 
+        <div className="space-y-2 rounded-xl border p-3" style={{ borderColor: 'var(--color-border, #ebebed)' }}>
+          <p className="text-xs font-bold" style={{ color: 'var(--color-text)' }}>
+            🏦 {t('고객 입금 계좌 (플랫폼 지정)', 'Tài khoản nhận tiền của khách (nền tảng chỉ định)', 'Customer payment account (platform-designated)')}
+          </p>
+          <input value={bankName} onChange={(e) => setBankName(e.target.value)} maxLength={40} placeholder={t('은행명', 'Tên ngân hàng', 'Bank name')} className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none" style={{ background: 'var(--color-bg, #f7f7f8)', borderColor: 'var(--color-border, #ebebed)', color: 'var(--color-text)' }} />
+          <input value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} maxLength={40} inputMode="numeric" placeholder={t('계좌번호', 'Số tài khoản', 'Account number')} className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none" style={{ background: 'var(--color-bg, #f7f7f8)', borderColor: 'var(--color-border, #ebebed)', color: 'var(--color-text)' }} />
+          <input value={bankHolder} onChange={(e) => setBankHolder(e.target.value)} maxLength={60} placeholder={t('예금주', 'Chủ tài khoản', 'Account holder')} className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none" style={{ background: 'var(--color-bg, #f7f7f8)', borderColor: 'var(--color-border, #ebebed)', color: 'var(--color-text)' }} />
+          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+            {t('결제 화면에서 고객에게 이 계좌가 안내됩니다. 현금은 이 계좌로만 받습니다.', 'Khách sẽ thấy tài khoản này ở màn hình thanh toán. Tiền chỉ nhận qua tài khoản này.', 'Customers see this account at checkout. Cash is accepted only through it.')}
+          </p>
+        </div>
+
         <button
           onClick={() => void saveSettings()}
           disabled={savingSettings}
@@ -217,9 +240,9 @@ export default function AdminPaymentsPage({ params }: { params: Promise<{ locale
         </h2>
         <p className="text-[11px] mb-2 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
           {t(
-            '이체·지갑 결제는 반드시 고객이 작업 완료를 승인하기 전에 입금을 확정해 주세요. 승인 시점에 보관 중인 비현금 결제는 정산 금액에 포함되지 않습니다. 현금 결제는 기술자가 현장에서 직접 수령하므로 정산 대상이 아니며, 수수료는 별도로 회수해야 합니다.',
-            'Hãy xác nhận chuyển khoản/ví TRƯỚC khi khách xác nhận hoàn thành — phần còn ở trạng thái giữ sẽ không được tính vào thanh toán. Tiền mặt do kỹ thuật viên nhận trực tiếp nên không nằm trong thanh toán; phí phải thu riêng.',
-            'Confirm transfer and wallet payments BEFORE the customer approves completion — anything still held at that moment is excluded from the settlement. Cash is collected on site by the technician, so it is not settled and the fee must be collected separately.'
+            '현금은 모두 플랫폼 지정 계좌로 들어옵니다. 입금을 확인하면 확정해 주세요. 고객이 작업 완료를 승인하기 전에 확정해야 정산에 포함되며, 승인 시점에 보관 중인 결제는 정산 금액에서 빠집니다. 정산 후 수수료를 뺀 금액은 아래 '기술자 정산 지급'에서 기술자에게 입금하고 기록하세요.',
+            'Mọi khoản tiền đều vào tài khoản do nền tảng chỉ định. Hãy xác nhận TRƯỚC khi khách xác nhận hoàn thành — phần còn ở trạng thái giữ sẽ không được tính vào thanh toán. Sau khi trừ phí, chuyển cho kỹ thuật viên ở mục 'Chi trả cho kỹ thuật viên' bên dưới và ghi nhận.',
+            'All cash arrives in the platform-designated account. Confirm each deposit BEFORE the customer approves completion — anything still held at that moment is excluded from the settlement. Pay the technician (net of the fee) under 'Technician payouts' below and record it.'
           )}
         </p>
         <p className="text-[11px] mb-2 leading-relaxed font-semibold" style={{ color: '#D32F2F' }}>
@@ -283,6 +306,10 @@ export default function AdminPaymentsPage({ params }: { params: Promise<{ locale
           </div>
         )}
       </section>
+
+      <AdminPayouts locale={locale} />
+
+      <AdminBtGrants locale={locale} />
     </div>
   );
 }
