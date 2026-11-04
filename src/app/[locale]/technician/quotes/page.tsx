@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useState } from 'react';
 import { useTechnicianOrders } from '@/hooks/useTechnicianOrders';
 import { useSupabase } from '@/hooks/useSupabase';
 import { useAuthState } from '@/hooks/useAuthState';
+import OrderComments from '@/components/OrderComments';
 import { formatDateTime, formatVND, localizedName } from '@/lib/format';
 import type { Quotation, ServiceCategory } from '@/types/supabase';
 
@@ -24,6 +25,7 @@ export default function TechnicianQuotesPage({ params }: { params: Promise<{ loc
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [myQuotes, setMyQuotes] = useState<Quotation[]>([]);
   const [openOrder, setOpenOrder] = useState<string | null>(null);
+  const [chatOrder, setChatOrder] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState>(EMPTY_DRAFT);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,6 +152,21 @@ export default function TechnicianQuotesPage({ params }: { params: Promise<{ loc
                     {o.photos_before.map((url) => (
                       <img key={url} src={url} alt="" loading="lazy" decoding="async" className="w-full aspect-square object-cover rounded-lg bg-gray-100" />
                     ))}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setChatOrder(chatOrder === o.id ? null : o.id)}
+                  className="mt-3 w-full rounded-xl border py-2 text-xs font-bold"
+                  style={{ borderColor: 'var(--color-border, #ebebed)', color: 'var(--color-text)' }}
+                >
+                  💬 {chatOrder === o.id
+                    ? t('문의 닫기', 'Đóng hỏi đáp', 'Close questions')
+                    : t('고객에게 질문하기 (면적·도면·사진)', 'Hỏi khách (diện tích, bản vẽ, ảnh)', 'Ask the customer (area, drawings, photos)')}
+                </button>
+                {chatOrder === o.id && (
+                  <div className="mt-2">
+                    <OrderComments orderId={o.id} locale={locale} role="technician" />
                   </div>
                 )}
 

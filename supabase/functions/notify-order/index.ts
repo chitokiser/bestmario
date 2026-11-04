@@ -4,6 +4,7 @@
 //   quote       새 견적 도착 → 주문한 고객
 //   message     새 채팅      → 보낸 사람의 상대방
 //   direct      상품 주문    → 상품을 올린 기술자
+//   comment     배정 전 문의 → 기술자가 쓰면 고객, 고객이 쓰면 앞서 질문한 기술자들
 // DB 트리거가 호출한다. 공유 비밀 헤더로만 접근을 허용한다.
 import webpush from 'npm:web-push@3.6.7';
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -52,7 +53,7 @@ Deno.serve(async (req) => {
     return new Response('forbidden', { status: 403 });
   }
 
-  const { order_id, kind: eventKind, quotation_id, message_id } = await req.json().catch(() => ({}));
+  const { order_id, kind: eventKind, quotation_id, message_id, comment_id } = await req.json().catch(() => ({}));
   if (!order_id) return new Response('bad request', { status: 400 });
 
   const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
@@ -93,6 +94,31 @@ Deno.serve(async (req) => {
       title: l === 'ko' ? `상품 주문 · ${name}` : l === 'en' ? `Product order · ${name}` : `Đơn hàng sản phẩm · ${name}`,
       body: l === 'ko' ? `${amount} 주문이 들어왔어요. 확인해 보세요.` : l === 'en' ? `New order ${amount}. Check it out.` : `Có đơn mới ${amount}. Hãy xem chi tiết.`,
       url: `/${l}/technician/order/${order.id}`,
+    });
+  } else if (eventKind === 'comment') {
+    // 배정 전 문의 댓글: 기술자가 쓰면 고객에게, 고객이 쓰면 앞서 질문한 기술자들에게
+    const { data: cm } = await sb
+      .from('order_comments')
+      .select('author_uid, content, image_path')
+      .eq('id', comment_id)
+      .maybeSingle();
+    if (!cm) return Response.json({ sent: 0, reason: 'no comment' });
+    const fromCustomer = cm.author_uid === order.customer_uid;
+    if (fromCustomer) {
+      const { data: prev } = await sb.from('order_comments').select('author_uid').eq('order_id', order.id);
+      uids = [...new Set((prev ?? []).map((r) => r.author_uid as string))].filter((u) => u !== order.customer_uid);
+    } else {
+      uids = [order.customer_uid as string];
+    }
+    if (uids.length === 0) return Response.json({ sent: 0, reason: 'no recipients' });
+    const preview = String(cm.content || '').slice(0, 80) || (cm.image_path ? '📷' : '');
+    build = (l, cat) => ({
+      title:
+        l === 'ko' ? `${fromCustomer ? '고객 답변' : '기술자 문의'} · ${cat}`
+        : l === 'en' ? `${fromCustomer ? 'Customer reply' : 'Technician question'} · ${cat}`
+        : `${fromCustomer ? 'Khách trả lời' : 'Kỹ thuật viên hỏi'} · ${cat}`,
+      body: preview,
+      url: fromCustomer ? `/${l}/technician/quotes` : `/${l}/orders/${order.id}`,
     });
   } else if (eventKind === 'message') {
     // 새 채팅 메시지 → 보낸 사람의 상대방
@@ -148,7 +174,7 @@ Deno.serve(async (req) => {
   let sent = 0;
   const dead: string[] = [];
   // 같은 주문의 같은 이벤트끼리만 교체되도록 tag 에 이벤트 종류를 넣는다
-  const tag = `${eventKind ?? 'new'}-${order.id}${quotation_id ? `-${quotation_id}` : ''}${message_id ? `-${message_id}` : ''}`;
+  const tag = `${eventKind ?? 'new'}-${order.id}${quotation_id ? `-${quotation_id}` : ''}${message_id ? `-${message_id}` : ''}${comment_id ? `-${comment_id}` : ''}`;
 
   await Promise.all(
     (subs ?? []).map(async (s) => {

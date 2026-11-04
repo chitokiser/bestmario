@@ -10,6 +10,7 @@ import { useAuthState } from '@/hooks/useAuthState';
 import PushBanner from '@/components/PushBanner';
 import OrderContact from '@/components/OrderContact';
 import ReviewForm from '@/components/ReviewForm';
+import OrderComments from '@/components/OrderComments';
 import { formatDateTime, formatVND, localizedName } from '@/lib/format';
 import type { Payment, ServiceCategory, ServiceOrder, Warranty } from '@/types/supabase';
 import type { TechnicianPublic } from '@/hooks/useQuotations';
@@ -257,6 +258,13 @@ export default function OrderDetailPage({
       {order.status === 'completed' && order.technician_uid && (
         <div className="mb-4">
           <ReviewForm orderId={order.id} locale={locale} />
+        </div>
+      )}
+
+      {/* 배정 전 문의: 기술자가 견적에 필요한 자료를 물어보고 고객이 글·사진으로 답한다 */}
+      {order.status === 'pending' && !order.technician_uid && order.order_type === 'quote_request' && (
+        <div className="mb-4">
+          <OrderComments orderId={order.id} locale={locale} role="customer" />
         </div>
       )}
 
