@@ -10,6 +10,7 @@ import { useWebzines } from '@/hooks/useWebzines';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useLogin } from '@/hooks/useLogin';
 import TopTechnicians from '@/components/TopTechnicians';
+import TechProducts from '@/components/TechProducts';
 import { useOrders } from '@/hooks/useOrders';
 
 const MERCHANT_ID = process.env.NEXT_PUBLIC_BESTMARIO_MERCHANT_ID || undefined;
@@ -693,6 +694,9 @@ export default function LandingClient({ locale }: { locale: string }) {
           </div>
         )}
       </section>
+
+      {/* ── 기술자 상품 모음 ── */}
+      <TechProducts locale={locale} />
 
       {/* ── 미션 랭킹 ── */}
       <TopTechnicians locale={locale} />

@@ -66,6 +66,11 @@ export interface ServiceOrder {
   photos_after: string[];
   note: string;
   offered_price: number | null;
+  tech_product_id: string | null;
+  quantity: number | null;
+  unit_price: number | null;
+  product_name: string | null;
+  unit_label: string | null;
   created_at: string;
 }
 
@@ -159,4 +164,36 @@ export interface SkillRequest {
   reject_reason: string;
   created_at: string;
   decided_at: string | null;
+}
+
+export type TechnicianProductStatus = 'pending' | 'active' | 'rejected' | 'hidden';
+
+export interface TechnicianProduct {
+  id: string;
+  technician_uid: string;
+  category_id: string;
+  name: string;
+  description: string;
+  unit_label: string;
+  unit_price: number;
+  min_qty: number;
+  status: TechnicianProductStatus;
+  reject_reason: string;
+  approved_at: string | null;
+  created_at: string;
+}
+
+/** marketplace_products() 결과 — 공개용이라 기술자 이름은 가려져 있다. */
+export interface MarketProduct {
+  id: string;
+  category_id: string;
+  name: string;
+  description: string;
+  unit_label: string;
+  unit_price: number;
+  min_qty: number;
+  tech_name: string;
+  tech_rating: number;
+  tech_reviews: number;
+  tech_done: number;
 }

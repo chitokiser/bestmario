@@ -9,6 +9,7 @@ import type { TechnicianProfile } from '@/types/supabase';
 
 const NAV = [
   { href: '',             icon: '🧰', ko: '주문',   vi: 'Đơn hàng', en: 'Orders' },
+  { href: '/products',    icon: '🛍️', ko: '상품',   vi: 'Sản phẩm', en: 'Products' },
   { href: '/quotes',      icon: '🧾', ko: '견적',   vi: 'Báo giá',  en: 'Quotes' },
   { href: '/settlements', icon: '💰', ko: '정산',   vi: 'Thanh toán', en: 'Earnings' },
   { href: '/profile',     icon: '👤', ko: '프로필', vi: 'Hồ sơ',    en: 'Profile' },
@@ -213,7 +214,7 @@ export default function TechnicianLayout({
       </div>
 
       <nav
-        className="sticky bottom-0 z-50 grid grid-cols-4 border-t"
+        className="sticky bottom-0 z-50 grid grid-cols-5 border-t"
         style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}
       >
         {NAV.map((n) => {

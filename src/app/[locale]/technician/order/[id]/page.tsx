@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import OrderStatusBadge from '@/components/OrderStatusBadge';
 import OrderContact from '@/components/OrderContact';
 import { useTechnicianOrders } from '@/hooks/useTechnicianOrders';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime, formatVND } from '@/lib/format';
 
 const MAX_PHOTOS = 10;
 
@@ -102,6 +102,15 @@ export default function TechnicianOrderPage({
           </p>
         )}
       </div>
+
+      {order.product_name && order.quantity !== null && order.unit_price !== null && (
+        <div className="rounded-2xl border px-4 py-3 text-sm" style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}>
+          <p className="font-bold" style={{ color: 'var(--color-text)' }}>🛍️ {order.product_name}</p>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            {order.quantity}{order.unit_label} × {formatVND(order.unit_price)} = {formatVND(order.quantity * order.unit_price)}
+          </p>
+        </div>
+      )}
 
       {order.status !== 'cancelled' && <OrderContact orderId={order.id} locale={locale} />}
 

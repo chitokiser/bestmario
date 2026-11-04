@@ -3,6 +3,7 @@
 //   assigned    기술자 수락  → 주문한 고객
 //   quote       새 견적 도착 → 주문한 고객
 //   message     새 채팅      → 보낸 사람의 상대방
+//   direct      상품 주문    → 상품을 올린 기술자
 // DB 트리거가 호출한다. 공유 비밀 헤더로만 접근을 허용한다.
 import webpush from 'npm:web-push@3.6.7';
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -58,7 +59,7 @@ Deno.serve(async (req) => {
 
   const { data: order } = await sb
     .from('service_orders')
-    .select('id, category_id, order_type, status, customer_uid, technician_uid, offered_price')
+    .select('id, category_id, order_type, status, customer_uid, technician_uid, offered_price, product_name, quantity, unit_price, unit_label')
     .eq('id', order_id)
     .maybeSingle();
   if (!order) return Response.json({ sent: 0, reason: 'no order' });
@@ -81,6 +82,18 @@ Deno.serve(async (req) => {
     uids = [order.customer_uid as string];
     const price = won(quote?.price as number | undefined);
     build = (l, cat) => ({ ...CUSTOMER.quote[l](cat, price), url: `/${l}/orders/${order.id}` });
+  } else if (eventKind === 'direct') {
+    // 기술자가 올린 상품에 주문이 들어옴 → 그 기술자에게
+    if (!order.technician_uid) return Response.json({ sent: 0, reason: 'no recipient' });
+    uids = [order.technician_uid as string];
+    const total = won(Number(order.quantity) * Number(order.unit_price));
+    const amount = `${order.quantity}${order.unit_label ?? ''} · ${total}`;
+    const name = (order.product_name as string) ?? '';
+    build = (l) => ({
+      title: l === 'ko' ? `상품 주문 · ${name}` : l === 'en' ? `Product order · ${name}` : `Đơn hàng sản phẩm · ${name}`,
+      body: l === 'ko' ? `${amount} 주문이 들어왔어요. 확인해 보세요.` : l === 'en' ? `New order ${amount}. Check it out.` : `Có đơn mới ${amount}. Hãy xem chi tiết.`,
+      url: `/${l}/technician/order/${order.id}`,
+    });
   } else if (eventKind === 'message') {
     // 새 채팅 메시지 → 보낸 사람의 상대방
     const { data: msg } = await sb

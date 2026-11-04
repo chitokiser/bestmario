@@ -237,6 +237,15 @@ export default function OrderDetailPage({
         )}
       </div>
 
+      {order.product_name && order.quantity !== null && order.unit_price !== null && (
+        <div className="mb-4 rounded-2xl border px-4 py-3 text-sm" style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}>
+          <p className="font-bold" style={{ color: 'var(--color-text)' }}>🛍️ {order.product_name}</p>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            {order.quantity}{order.unit_label} × {formatVND(order.unit_price)} = {formatVND(order.quantity * order.unit_price)}
+          </p>
+        </div>
+      )}
+
       {/* 용역 성사(기술자 배정) 후: 잘로·전화·채팅 */}
       {order.technician_uid && order.status !== 'cancelled' && (
         <div className="mb-4">
