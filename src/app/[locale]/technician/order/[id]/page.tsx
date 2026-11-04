@@ -4,6 +4,7 @@ import { use, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import OrderStatusBadge from '@/components/OrderStatusBadge';
 import OrderContact from '@/components/OrderContact';
+import PaymentStatus from '@/components/PaymentStatus';
 import { useTechnicianOrders } from '@/hooks/useTechnicianOrders';
 import { formatDateTime, formatVND } from '@/lib/format';
 
@@ -111,6 +112,8 @@ export default function TechnicianOrderPage({
           </p>
         </div>
       )}
+
+      {order.status !== 'cancelled' && <PaymentStatus orderId={order.id} locale={locale} audience="technician" />}
 
       {order.status !== 'cancelled' && <OrderContact orderId={order.id} locale={locale} />}
 

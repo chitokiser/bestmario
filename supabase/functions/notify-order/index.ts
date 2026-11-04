@@ -4,6 +4,7 @@
 //   quote       새 견적 도착 → 주문한 고객
 //   message     새 채팅      → 보낸 사람의 상대방
 //   direct      상품 주문    → 상품을 올린 기술자
+//   payment     입금 확인    → 고객(입금 확인됨)·배정된 기술자(작업 진행 가능)
 //   comment     배정 전 문의 → 기술자가 쓰면 고객, 고객이 쓰면 앞서 질문한 기술자들
 // DB 트리거가 호출한다. 공유 비밀 헤더로만 접근을 허용한다.
 import webpush from 'npm:web-push@3.6.7';
@@ -53,7 +54,7 @@ Deno.serve(async (req) => {
     return new Response('forbidden', { status: 403 });
   }
 
-  const { order_id, kind: eventKind, quotation_id, message_id, comment_id } = await req.json().catch(() => ({}));
+  const { order_id, kind: eventKind, quotation_id, message_id, comment_id, payment_id } = await req.json().catch(() => ({}));
   if (!order_id) return new Response('bad request', { status: 400 });
 
   const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
@@ -73,7 +74,7 @@ Deno.serve(async (req) => {
 
   // 받는 사람(uid)과 알림 내용을 이벤트별로 정한다
   let uids: string[] = [];
-  let build: (l: Lang, cat: string) => Built;
+  let build: (l: Lang, cat: string, uid: string) => Built;
 
   if (eventKind === 'assigned') {
     uids = [order.customer_uid as string];
@@ -95,6 +96,30 @@ Deno.serve(async (req) => {
       body: l === 'ko' ? `${amount} 주문이 들어왔어요. 확인해 보세요.` : l === 'en' ? `New order ${amount}. Check it out.` : `Có đơn mới ${amount}. Hãy xem chi tiết.`,
       url: `/${l}/technician/order/${order.id}`,
     });
+  } else if (eventKind === 'payment') {
+    // 관리자가 입금을 확인함 → 고객에게는 확인 안내, 배정된 기술자에게는 작업 진행 안내
+    const { data: pay } = await sb.from('payments').select('amount').eq('id', payment_id).maybeSingle();
+    const amount = won(pay?.amount as number | undefined);
+    uids = [order.customer_uid as string, ...(order.technician_uid ? [order.technician_uid as string] : [])];
+    build = (l, cat, uid) => {
+      const toCustomer = uid === order.customer_uid;
+      if (toCustomer) {
+        return {
+          title: l === 'ko' ? `입금 확인 완료 · ${cat}` : l === 'en' ? `Deposit confirmed · ${cat}` : `Đã xác nhận thanh toán · ${cat}`,
+          body: l === 'ko' ? `${amount} 입금이 베스트마리오 플랫폼 관리계좌에서 확인됐어요. 완료 승인 시 수수료를 제외하고 기술자에게 정산됩니다.`
+            : l === 'en' ? `${amount} confirmed in the BestMario platform account. The technician is paid minus the fee once you approve completion.`
+            : `${amount} đã được xác nhận trong tài khoản quản lý của BestMario. Sau khi bạn xác nhận hoàn thành, kỹ thuật viên được quyết toán sau khi trừ phí.`,
+          url: `/${l}/orders/${order.id}`,
+        };
+      }
+      return {
+        title: l === 'ko' ? `고객 입금 확인 · ${cat}` : l === 'en' ? `Customer deposit confirmed · ${cat}` : `Đã xác nhận khách thanh toán · ${cat}`,
+        body: l === 'ko' ? `${amount}이(가) 플랫폼 관리계좌에 입금됐어요. 안심하고 작업을 진행하세요. 완료되면 수수료를 제외하고 정산됩니다.`
+          : l === 'en' ? `${amount} is in the platform account. Go ahead with the work; it is settled minus the fee on completion.`
+          : `${amount} đã vào tài khoản quản lý. Hãy yên tâm thi công; khi hoàn thành sẽ quyết toán sau khi trừ phí.`,
+        url: `/${l}/technician/order/${order.id}`,
+      };
+    };
   } else if (eventKind === 'comment') {
     // 배정 전 문의 댓글: 기술자가 쓰면 고객에게, 고객이 쓰면 앞서 질문한 기술자들에게
     const { data: cm } = await sb
@@ -174,13 +199,13 @@ Deno.serve(async (req) => {
   let sent = 0;
   const dead: string[] = [];
   // 같은 주문의 같은 이벤트끼리만 교체되도록 tag 에 이벤트 종류를 넣는다
-  const tag = `${eventKind ?? 'new'}-${order.id}${quotation_id ? `-${quotation_id}` : ''}${message_id ? `-${message_id}` : ''}${comment_id ? `-${comment_id}` : ''}`;
+  const tag = `${eventKind ?? 'new'}-${order.id}${quotation_id ? `-${quotation_id}` : ''}${message_id ? `-${message_id}` : ''}${comment_id ? `-${comment_id}` : ''}${payment_id ? `-${payment_id}` : ''}`;
 
   await Promise.all(
     (subs ?? []).map(async (s) => {
       const l = langOf.get(s.uid as string) ?? 'vi';
       const catName = category ? (category[`name_${l}` as 'name_ko'] as string) : '';
-      const payload = JSON.stringify({ ...build(l, catName), tag });
+      const payload = JSON.stringify({ ...build(l, catName, s.uid as string), tag });
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },

@@ -11,6 +11,7 @@ import PushBanner from '@/components/PushBanner';
 import OrderContact from '@/components/OrderContact';
 import ReviewForm from '@/components/ReviewForm';
 import OrderComments from '@/components/OrderComments';
+import PaymentStatus from '@/components/PaymentStatus';
 import { formatDateTime, formatVND, localizedName } from '@/lib/format';
 import type { Payment, ServiceCategory, ServiceOrder, Warranty } from '@/types/supabase';
 import type { TechnicianPublic } from '@/hooks/useQuotations';
@@ -244,6 +245,12 @@ export default function OrderDetailPage({
           <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
             {order.quantity}{order.unit_label} × {formatVND(order.unit_price)} = {formatVND(order.quantity * order.unit_price)}
           </p>
+        </div>
+      )}
+
+      {order.status !== 'cancelled' && (
+        <div className="mb-4">
+          <PaymentStatus orderId={order.id} locale={locale} audience="customer" />
         </div>
       )}
 
