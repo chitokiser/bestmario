@@ -26,7 +26,10 @@ function getClient(idToken?: string): SupabaseClient {
  * 의존성에 넣어 토큰 도착 시 재조회해야 한다.
  */
 export function useSupabase(): SupabaseClient {
-  const [idToken, setIdToken] = useState<string | undefined>(undefined);
+  // 새로 마운트되는 컴포넌트가 비인증(undefined)으로 시작하면 전역 캐시가 비인증 클라이언트로
+  // 덮어써져 다른 컴포넌트의 supabase 가 바뀌고, 재조회 → 리마운트가 끝없이 반복된다.
+  // 이미 받아 둔 토큰으로 시작해 캐시를 유지한다.
+  const [idToken, setIdToken] = useState<string | undefined>(cachedToken);
 
   useEffect(() => {
     return onIdTokenChanged(auth, async (u) => {

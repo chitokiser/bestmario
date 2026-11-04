@@ -44,7 +44,7 @@ export function useTechnicianOrders() {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    // 첫 조회만 로딩 화면을 보인다(초기값 true). 재조회에서 화면을 비우면 입력 중인 내용이 사라진다.
 
     const { data: profRow, error: profErr } = await supabase
       .from('technician_profiles')
