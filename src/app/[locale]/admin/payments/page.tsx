@@ -240,9 +240,9 @@ export default function AdminPaymentsPage({ params }: { params: Promise<{ locale
         </h2>
         <p className="text-[11px] mb-2 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
           {t(
-            '현금은 모두 플랫폼 지정 계좌로 들어옵니다. 입금을 확인하면 확정해 주세요. 고객이 작업 완료를 승인하기 전에 확정해야 정산에 포함되며, 승인 시점에 보관 중인 결제는 정산 금액에서 빠집니다. 정산 후 수수료를 뺀 금액은 아래 '기술자 정산 지급'에서 기술자에게 입금하고 기록하세요.',
-            'Mọi khoản tiền đều vào tài khoản do nền tảng chỉ định. Hãy xác nhận TRƯỚC khi khách xác nhận hoàn thành — phần còn ở trạng thái giữ sẽ không được tính vào thanh toán. Sau khi trừ phí, chuyển cho kỹ thuật viên ở mục 'Chi trả cho kỹ thuật viên' bên dưới và ghi nhận.',
-            'All cash arrives in the platform-designated account. Confirm each deposit BEFORE the customer approves completion — anything still held at that moment is excluded from the settlement. Pay the technician (net of the fee) under 'Technician payouts' below and record it.'
+            '현금은 모두 플랫폼 지정 계좌로 들어옵니다. 입금을 확인하면 확정해 주세요. 고객이 작업 완료를 승인하기 전에 확정해야 정산에 포함되며, 승인 시점에 보관 중인 결제는 정산 금액에서 빠집니다. 정산 후 수수료를 뺀 금액은 아래 「기술자 정산 지급」에서 기술자에게 입금하고 기록하세요.',
+            'Mọi khoản tiền đều vào tài khoản do nền tảng chỉ định. Hãy xác nhận TRƯỚC khi khách xác nhận hoàn thành — phần còn ở trạng thái giữ sẽ không được tính vào thanh toán. Sau khi trừ phí, chuyển cho kỹ thuật viên ở mục «Chi trả cho kỹ thuật viên» bên dưới và ghi nhận.',
+            'All cash arrives in the platform-designated account. Confirm each deposit BEFORE the customer approves completion — anything still held at that moment is excluded from the settlement. Pay the technician (net of the fee) under “Technician payouts” below and record it.'
           )}
         </p>
         <p className="text-[11px] mb-2 leading-relaxed font-semibold" style={{ color: '#D32F2F' }}>
