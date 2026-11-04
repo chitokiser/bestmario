@@ -85,9 +85,11 @@ as $$
   )
 $$;
 
+-- 역할 제한(to authenticated)을 두지 않는다: Third Party Auth 토큰은 기존 documents 정책처럼
+-- 경로의 uid 로만 판정해야 업로드된다.
 drop policy if exists comment_files_insert on storage.objects;
 create policy comment_files_insert on storage.objects
-  for insert to authenticated
+  for insert
   with check (
     bucket_id = 'comment-files'
     and (storage.foldername(name))[1] = firebase_uid()
@@ -95,7 +97,7 @@ create policy comment_files_insert on storage.objects
 
 drop policy if exists comment_files_select on storage.objects;
 create policy comment_files_select on storage.objects
-  for select to authenticated
+  for select
   using (
     bucket_id = 'comment-files'
     and ((storage.foldername(name))[1] = firebase_uid() or can_read_comment_file(name))
