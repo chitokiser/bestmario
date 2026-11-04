@@ -48,6 +48,7 @@ export default function TechnicianProductsPage({ params }: { params: Promise<{ l
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
   const seq = useRef(0);
 
   const load = useCallback(async () => {
@@ -75,6 +76,29 @@ export default function TechnicianProductsPage({ params }: { params: Promise<{ l
   const catLabel = (id: string) => {
     const c = categories.find((x) => x.id === id);
     return c ? `${c.icon} ${localizedName(c, locale)}` : id;
+  };
+
+  // 상품 페이지 주소. 기본 언어(vi)는 접두어가 없다.
+  const productUrl = (id: string) =>
+    `${window.location.origin}${locale === 'vi' ? '' : `/${locale}`}/shop/${id}`;
+
+  const copyLink = async (p: TechnicianProduct) => {
+    const url = productUrl(p.id);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(p.id);
+      window.setTimeout(() => setCopied((c) => (c === p.id ? null : c)), 2000);
+    } catch {
+      window.prompt(t('링크를 복사해 주세요', 'Hãy sao chép liên kết', 'Copy the link'), url);
+    }
+  };
+
+  const shareLink = async (p: TechnicianProduct) => {
+    try {
+      await navigator.share({ title: p.name, text: `${p.name} · ${formatVND(p.unit_price)} / ${p.unit_label}`, url: productUrl(p.id) });
+    } catch {
+      // 사용자가 공유를 취소한 경우 — 무시
+    }
   };
 
   const startNew = () => {
@@ -312,6 +336,36 @@ export default function TechnicianProductsPage({ params }: { params: Promise<{ l
                     {t('반려 사유', 'Lý do', 'Reason')}: {p.reject_reason}
                   </p>
                 )}
+                {p.status === 'active' ? (
+                  <div className="mt-3 rounded-xl p-3" style={{ background: 'var(--color-bg, #f7f7f8)' }}>
+                    <p className="text-[11px] font-semibold" style={{ color: 'var(--color-text-muted)' }}>
+                      🔗 {t('상품 링크 (고객에게 공유하세요)', 'Liên kết sản phẩm (chia sẻ cho khách)', 'Product link (share with customers)')}
+                    </p>
+                    <p className="mt-1 break-all text-xs font-mono" style={{ color: 'var(--color-text)' }}>{productUrl(p.id)}</p>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={() => void copyLink(p)}
+                        className="flex-1 rounded-lg py-1.5 text-xs font-bold text-white"
+                        style={{ background: 'var(--color-navy, #1A237E)' }}
+                      >
+                        {copied === p.id ? `✓ ${t('복사됨', 'Đã sao chép', 'Copied')}` : t('링크 복사', 'Sao chép liên kết', 'Copy link')}
+                      </button>
+                      {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+                        <button
+                          onClick={() => void shareLink(p)}
+                          className="flex-1 rounded-lg border py-1.5 text-xs font-bold"
+                          style={{ borderColor: 'var(--color-navy, #1A237E)', color: 'var(--color-navy, #1A237E)' }}
+                        >
+                          {t('공유하기', 'Chia sẻ', 'Share')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : p.status === 'pending' ? (
+                  <p className="mt-2 text-[11px]" style={{ color: '#E65100' }}>
+                    {t('관리자 승인 후 링크가 열립니다.', 'Liên kết sẽ mở sau khi quản trị duyệt.', 'The link opens after admin approval.')}
+                  </p>
+                ) : null}
                 <div className="mt-3 flex gap-2">
                   <button
                     onClick={() => startEdit(p)}
