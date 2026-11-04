@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -9,6 +9,8 @@ import { useMerchant } from '@/hooks/useMerchant';
 import { useWebzines } from '@/hooks/useWebzines';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useLogin } from '@/hooks/useLogin';
+import { useSavedContact } from '@/hooks/useSavedContact';
+import { useSupabase } from '@/hooks/useSupabase';
 import TopTechnicians from '@/components/TopTechnicians';
 import TechProducts from '@/components/TechProducts';
 import { useOrders } from '@/hooks/useOrders';
@@ -329,6 +331,13 @@ export default function LandingClient({ locale }: { locale: string }) {
   const [modalError, setModalError] = useState<string | null>(null);
 
   const { user } = useAuthState();
+  const supabase = useSupabase();
+  const saved = useSavedContact();
+  // 창을 연 뒤에 저장된 값이 도착해도 빈 칸을 채운다
+  useEffect(() => {
+    setModalPhone((prev) => prev || saved.phone);
+    setModalAddress((prev) => prev || saved.address);
+  }, [saved]);
   const { createOrder, submitting } = useOrders();
   const { merchant, loading: merchantLoading } = useMerchant(MERCHANT_ID);
   const { webzines, loading: webzinesLoading } = useWebzines(MERCHANT_ID, 3);
@@ -341,6 +350,9 @@ export default function LandingClient({ locale }: { locale: string }) {
     setModalItem(item ?? '');
     setModalNote(item ?? '');
     setModalError(null);
+    // 이전에 입력한 연락처·주소가 있으면 미리 채운다 (사용자가 이미 입력한 값은 유지)
+    setModalPhone((prev) => prev || saved.phone);
+    setModalAddress((prev) => prev || saved.address);
     setShowModal(true);
   };
 
@@ -366,6 +378,8 @@ export default function LandingClient({ locale }: { locale: string }) {
 
     try {
       const contact = modalPhone.trim();
+      // 연락처는 계정에 저장해 다음 요청 때 자동으로 불러온다
+      if (contact) await supabase.from('users').update({ phone: contact }).eq('uid', user.uid);
       const order = await createOrder({
         category_id: modalService,
         order_type: 'quote_request',

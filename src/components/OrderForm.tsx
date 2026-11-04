@@ -68,6 +68,25 @@ export default function OrderForm({
     };
   }, [supabase, user]);
 
+  // 가장 최근 주문의 주소를 미리 채운다 (이미 입력한 값은 유지)
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    void supabase
+      .from('service_orders')
+      .select('address')
+      .eq('customer_uid', user.uid)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (alive && data?.address) setAddress((prev) => prev || (data.address as string));
+      });
+    return () => {
+      alive = false;
+    };
+  }, [supabase, user]);
+
   const bidAvailable = selectedProduct?.bid_allowed === true;
   const isBid = mode === 'bid' && bidAvailable;
   const offerNum = Number(offer);
