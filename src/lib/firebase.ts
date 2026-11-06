@@ -38,6 +38,12 @@ if (
 export const callMerchantMemberJoin = (merchantId: string) =>
   httpsCallable(functions, 'merchantMemberJoin')({ merchantId });
 
+export const callClaimSignupBonus = (site: string) =>
+  httpsCallable<{ site: string }, { granted: boolean; amount?: number; reason?: string }>(
+    functions,
+    'claimSignupBonus'
+  )({ site });
+
 export const callPayServiceJobEscrow = (
   merchantId: string,
   serviceJobId: string,

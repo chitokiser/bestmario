@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { auth, callMerchantMemberJoin } from '@/lib/firebase';
+import { auth, callMerchantMemberJoin, callClaimSignupBonus } from '@/lib/firebase';
 import { createSupabaseClient } from '@/lib/supabase';
 
 const MERCHANT_ID = process.env.NEXT_PUBLIC_BESTMARIO_MERCHANT_ID || undefined;
@@ -44,6 +44,15 @@ export function useLogin(locale: string) {
         } catch {
           // 멘토 지정 실패 무시
         }
+      }
+      // 신규 가입 보너스(구글 계정당 1회) — 서버가 자격을 확인하고 지급한다.
+      try {
+        const bonus = await callClaimSignupBonus('bestmario');
+        if (bonus.data.granted) {
+          alert(`🎉 +${(bonus.data.amount ?? 0).toLocaleString()} GP`);
+        }
+      } catch {
+        // 보너스 요청 실패는 로그인에 영향 주지 않는다
       }
       setJoinLoading(false);
     } catch (e) {
