@@ -61,34 +61,22 @@ export default function PaymentPage({
     const o = orderRow as ServiceOrder;
     setOrder(o);
 
-    // 금액은 DB 에서만 읽는다 (스펙 §10 클라이언트 금액 직접 수신 금지).
-    // 선택된 견적가 > 고정가 상품가 순서 — 003_functions.sql 의 order_expected_amount 와 동일한 규칙.
-    let expected = 0;
+    // 금액은 DB 단일 기준(order_expected_amount: 수락 견적 → 기술자 상품 단가×수량 → 고객 제시가 → 정찰가)에서 읽는다.
+    const [expRes, paymentsRes] = await Promise.all([
+      supabase.rpc('order_expected_amount', { p_order_id: orderId }),
+      supabase.from('payments').select('amount, status').eq('order_id', orderId),
+    ]);
 
-    const { data: acceptedQuote } = await supabase
-      .from('quotations')
-      .select('price')
-      .eq('order_id', orderId)
-      .eq('status', 'accepted')
-      .maybeSingle();
-
-    if (acceptedQuote?.price) {
-      expected = Number(acceptedQuote.price);
-    } else if (o.product_id) {
-      const { data: product } = await supabase
-        .from('service_products')
-        .select('base_price')
-        .eq('id', o.product_id)
-        .maybeSingle();
-      if (product?.base_price) expected = Number(product.base_price);
+    let expected = Number(expRes.data ?? 0);
+    if (expected <= 0) {
+      if (o.quantity !== null && o.unit_price !== null) {
+        expected = Number(o.quantity) * Number(o.unit_price);
+      } else if (o.offered_price !== null && o.offered_price > 0) {
+        expected = Number(o.offered_price);
+      }
     }
 
-    const { data: payments } = await supabase
-      .from('payments')
-      .select('amount, status')
-      .eq('order_id', orderId);
-
-    const alreadyPaid = ((payments ?? []) as Pick<Payment, 'amount' | 'status'>[])
+    const alreadyPaid = ((paymentsRes.data ?? []) as Pick<Payment, 'amount' | 'status'>[])
       .filter((p) => p.status === 'held' || p.status === 'completed')
       .reduce((sum, p) => sum + p.amount, 0);
 
@@ -189,6 +177,14 @@ export default function PaymentPage({
 
   return (
     <Shell locale={locale}>
+      {order.product_name && order.quantity !== null && order.unit_price !== null && (
+        <div className="mb-4 rounded-2xl border px-4 py-3 text-sm" style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}>
+          <p className="font-bold" style={{ color: 'var(--color-text)' }}>🛍️ {order.product_name}</p>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            {order.quantity}{order.unit_label} × {formatVND(order.unit_price)} = {formatVND(order.quantity * order.unit_price)}
+          </p>
+        </div>
+      )}
       <PaymentSheet
         orderId={orderId}
         amount={amount - paid}

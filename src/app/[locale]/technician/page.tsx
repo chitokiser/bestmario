@@ -67,6 +67,11 @@ export default function TechnicianHomePage({ params }: { params: Promise<{ local
       <p className="mt-0.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>
         📍 {order.address}
       </p>
+      {order.product_name && order.quantity !== null && order.unit_price !== null && (
+        <p className="mt-2 inline-block rounded-lg px-2.5 py-1 text-xs font-extrabold" style={{ background: 'var(--color-primary-bg, #FFEBEE)', color: 'var(--color-primary)' }}>
+          🛍️ {order.product_name} · {order.quantity}{order.unit_label} × {formatVND(order.unit_price)} = {formatVND(order.quantity * order.unit_price)}
+        </p>
+      )}
       {order.offered_price !== null && (
         <p className="mt-2 inline-block rounded-lg px-2.5 py-1 text-xs font-extrabold" style={{ background: 'var(--color-primary-bg, #FFEBEE)', color: 'var(--color-primary)' }}>
           💰 {t('고객 제시가', 'Giá khách đề xuất', 'Customer offer')} {formatVND(order.offered_price)}

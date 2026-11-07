@@ -122,6 +122,12 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                     {formatDateTime(o.scheduled_at, locale)}
                   </p>
 
+                  {o.product_name && o.quantity !== null && o.unit_price !== null && (
+                    <p className="mt-1 text-xs font-bold" style={{ color: 'var(--color-text)' }}>
+                      🛍️ {o.product_name} ({o.quantity}{o.unit_label} × {formatVND(o.unit_price)} = {formatVND(o.quantity * o.unit_price)})
+                    </p>
+                  )}
+
                   <div className="mt-2 flex items-baseline justify-between">
                     <span className="text-[11px] truncate pr-2" style={{ color: 'var(--color-text-muted)' }}>
                       {o.address}
