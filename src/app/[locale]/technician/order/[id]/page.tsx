@@ -20,6 +20,8 @@ export default function TechnicianOrderPage({
   const { myOrders, loading, startWork, completeWork, uploadPhotos } = useTechnicianOrders();
 
   const fileInput = useRef<HTMLInputElement>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadDone, setUploadDone] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,8 +43,10 @@ export default function TechnicianOrderPage({
     }
   };
 
-  const handleUpload = async (files: FileList | null) => {
+  const handleSelectFiles = (files: FileList | null) => {
     if (!files || files.length === 0 || !order) return;
+    setError(null);
+    setUploadDone(false);
 
     const existing = order.photos_after.length;
     const room = MAX_PHOTOS - existing;
@@ -51,13 +55,32 @@ export default function TechnicianOrderPage({
       return;
     }
 
-    const picked = Array.from(files).slice(0, room);
+    const merged = [...selectedFiles, ...Array.from(files)].slice(0, room);
+    setSelectedFiles(merged);
+    if (fileInput.current) fileInput.current.value = '';
+  };
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRegisterPhotos = async () => {
+    if (!order || selectedFiles.length === 0) return;
+
+    const existing = order.photos_after.length;
+    const room = MAX_PHOTOS - existing;
+    if (room <= 0) {
+      setError(t(`사진은 최대 ${MAX_PHOTOS}장까지 등록할 수 있습니다.`, `Tối đa ${MAX_PHOTOS} ảnh.`, `Up to ${MAX_PHOTOS} photos.`));
+      return;
+    }
+
+    const picked = selectedFiles.slice(0, room);
     await run('upload', async () => {
       const urls = await uploadPhotos(order.id, picked);
       await completeWork(order.id, [...order.photos_after, ...urls]);
+      setSelectedFiles([]);
+      setUploadDone(true);
     });
-
-    if (fileInput.current) fileInput.current.value = '';
   };
 
   if (loading) {
@@ -180,15 +203,78 @@ export default function TechnicianOrderPage({
             type="file"
             accept="image/*"
             multiple
-            onChange={(e) => void handleUpload(e.target.files)}
+            onChange={(e) => handleSelectFiles(e.target.files)}
             disabled={busy !== null || order.photos_after.length >= MAX_PHOTOS}
-            className="w-full text-xs"
+            className="hidden"
           />
 
-          <p className="mt-1 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-            {order.photos_after.length} / {MAX_PHOTOS}
-            {busy === 'upload' && ` · ${t('업로드 중…', 'Đang tải lên…', 'Uploading…')}`}
+          {selectedFiles.length > 0 && (
+            <div className="mb-3 space-y-1.5 rounded-xl border p-3" style={{ background: 'var(--color-bg, #f7f7f8)', borderColor: 'var(--color-border, #ebebed)' }}>
+              <p className="text-[11px] font-bold" style={{ color: 'var(--color-text)' }}>
+                {t(`선택된 사진 (${selectedFiles.length}장)`, `Ảnh đã chọn (${selectedFiles.length})`, `Selected photos (${selectedFiles.length})`)}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedFiles.map((f, idx) => (
+                  <span
+                    key={`${f.name}-${idx}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px]"
+                    style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)', color: 'var(--color-text)' }}
+                  >
+                    <span className="max-w-[160px] truncate">{f.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeSelectedFile(idx)}
+                      disabled={busy !== null}
+                      className="font-bold hover:opacity-75"
+                      style={{ color: '#D32F2F' }}
+                      aria-label={t('삭제', 'Xóa', 'Remove')}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              disabled={busy !== null || order.photos_after.length >= MAX_PHOTOS}
+              className="flex-1 rounded-xl border py-3 text-sm font-extrabold transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{
+                background: 'var(--color-bg, #f7f7f8)',
+                borderColor: 'var(--color-border, #ebebed)',
+                color: 'var(--color-text)',
+              }}
+            >
+              📷 {t('파일 선택', 'Chọn ảnh', 'Choose files')}
+              {selectedFiles.length > 0 ? ` (${selectedFiles.length})` : ''}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void handleRegisterPhotos()}
+              disabled={busy !== null || selectedFiles.length === 0 || order.photos_after.length >= MAX_PHOTOS}
+              className="flex-1 rounded-xl py-3 text-sm font-extrabold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              {busy === 'upload'
+                ? t('등록 중…', 'Đang tải lên…', 'Uploading…')
+                : t('등록하기', 'Đăng ký ảnh', 'Upload & Submit')}
+            </button>
+          </div>
+
+          <p className="mt-2 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+            {t('등록된 사진', 'Ảnh đã đăng', 'Uploaded')}: {order.photos_after.length} / {MAX_PHOTOS}
           </p>
+
+          {uploadDone && (
+            <p className="mt-2 text-xs font-bold" style={{ color: '#2E7D32' }}>
+              ✓ {t('사진이 등록되어 고객에게 완료 승인 요청이 전달되었습니다.', 'Đã đăng ảnh và gửi yêu cầu xác nhận hoàn thành cho khách.', 'Photos uploaded and completion request sent to the customer.')}
+            </p>
+          )}
 
           <p className="mt-4 pt-3 border-t text-[11px] leading-relaxed" style={{ borderColor: 'var(--color-border, #ebebed)', color: 'var(--color-text-muted)' }}>
             {t(
