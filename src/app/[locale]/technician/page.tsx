@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import OrderStatusBadge from '@/components/OrderStatusBadge';
+import PaymentStatus from '@/components/PaymentStatus';
 import { useTechnicianOrders } from '@/hooks/useTechnicianOrders';
 import { useSupabase } from '@/hooks/useSupabase';
 import { formatDateTime, formatVND, localizedName } from '@/lib/format';
@@ -82,6 +83,16 @@ export default function TechnicianHomePage({ params }: { params: Promise<{ local
           {order.note}
         </p>
       )}
+      {order.status !== 'cancelled' && (
+        <div className="mt-3">
+          <PaymentStatus
+            orderId={order.id}
+            locale={locale}
+            audience="technician"
+            showUnpaid={order.technician_uid !== null && order.status !== 'completed'}
+          />
+        </div>
+      )}
       {children}
     </article>
   );
@@ -92,6 +103,22 @@ export default function TechnicianHomePage({ params }: { params: Promise<{ local
 
   return (
     <div className="space-y-6">
+      <div
+        className="rounded-2xl border px-4 py-3"
+        style={{ background: '#E8F5E9', borderColor: '#2E7D32' }}
+      >
+        <p className="text-xs font-extrabold" style={{ color: '#1B5E20' }}>
+          🛡️ {t('플랫폼 안전 정산 보장 안내', 'Đảm bảo quyết toán an toàn qua nền tảng', 'Platform Safe Payout Guarantee')}
+        </p>
+        <p className="mt-1 text-[11px] leading-relaxed" style={{ color: '#1B5E20' }}>
+          {t(
+            '고객이 베스트마리오 플랫폼 계좌로 입금하고 관리자가 확인한 주문에는 「🛡️ 플랫폼 입금 확인 완료 (정산 보장)」 표시가 나타납니다. 입금 확인된 작업은 완료 시 수수료를 제외한 금액이 100% 정산되니 안심하고 일하세요.',
+            'Đơn hàng đã được khách chuyển khoản vào nền tảng BestMario và quản trị viên xác nhận sẽ có nhãn «🛡️ Đã xác nhận tiền vào nền tảng (Đảm bảo quyết toán)». Khi hoàn thành, tiền quyết toán (sau khi trừ phí) được đảm bảo 100%.',
+            'Orders where the customer has paid the BestMario platform and an admin confirmed the deposit display “🛡️ Platform deposit confirmed (Payout guaranteed)”. Your payout (minus fee) is 100% guaranteed upon completion.',
+          )}
+        </p>
+      </div>
+
       {error && <p className="text-sm font-semibold" style={{ color: '#D32F2F' }}>{error}</p>}
       {actionError && <p className="text-sm font-semibold" style={{ color: '#D32F2F' }}>{actionError}</p>}
 

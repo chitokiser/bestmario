@@ -113,7 +113,14 @@ export default function TechnicianOrderPage({
         </div>
       )}
 
-      {order.status !== 'cancelled' && <PaymentStatus orderId={order.id} locale={locale} audience="technician" />}
+      {order.status !== 'cancelled' && (
+        <PaymentStatus
+          orderId={order.id}
+          locale={locale}
+          audience="technician"
+          showUnpaid={order.status !== 'completed'}
+        />
+      )}
 
       {order.status !== 'cancelled' && <OrderContact orderId={order.id} locale={locale} />}
 
