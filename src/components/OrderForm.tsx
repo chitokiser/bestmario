@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useOrders } from '@/hooks/useOrders';
 import { useSupabase } from '@/hooks/useSupabase';
 import { useAuthState } from '@/hooks/useAuthState';
@@ -33,6 +34,7 @@ export default function OrderForm({
   const { createOrder, submitting } = useOrders();
   const supabase = useSupabase();
   const { user } = useAuthState();
+  const searchParams = useSearchParams();
 
   const [categoryId, setCategoryId] = useState('');
   const [productId, setProductId] = useState('');
@@ -49,6 +51,29 @@ export default function OrderForm({
   // createOrder 가 끝나면 훅의 잠금이 풀려 버튼이 다시 활성화된다. 라우팅이
   // 끝나기 전의 두 번째 탭이 두 번째 주문을 만들지 않도록 따로 잠근다.
   const [submitted, setSubmitted] = useState(false);
+
+  const [aiApplied, setAiApplied] = useState(false);
+  const [aiPhoto, setAiPhoto] = useState<string | null>(null);
+
+  useEffect(() => {
+    const qCat = searchParams?.get('category');
+    const qNote = searchParams?.get('note');
+    const qPrice = searchParams?.get('offeredPrice');
+
+    if (qCat) setCategoryId((prev) => prev || qCat);
+    if (qNote) setNote((prev) => prev || qNote);
+    if (qPrice) {
+      setMode('bid');
+      setOffer((prev) => prev || qPrice);
+    }
+    if (qCat || qNote || qPrice) {
+      setAiApplied(true);
+    }
+    try {
+      const stored = sessionStorage.getItem('bestmario_ai_photo');
+      if (stored) setAiPhoto(stored);
+    } catch {}
+  }, [searchParams]);
 
   const categoryProducts = useMemo(
     () => products.filter((p) => p.category_id === categoryId),
@@ -140,6 +165,56 @@ export default function OrderForm({
 
   return (
     <div className="space-y-4">
+      {/* AI 진단 연동 배너 */}
+      {aiApplied ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50/80 p-3.5 flex gap-3 items-center">
+          {aiPhoto ? (
+            <img src={aiPhoto} alt="AI Photo" className="w-14 h-14 rounded-xl object-cover shrink-0 border border-red-200 shadow-xs" />
+          ) : (
+            <div className="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-xl shrink-0">
+              🤖
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-red-700">
+                {L(locale, '🤖 AI 고장진단 데이터 적용됨', '🤖 Đã áp dụng dữ liệu AI chẩn đoán', '🤖 AI Diagnosis Applied')}
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-600 line-clamp-2 mt-0.5">
+              {L(
+                locale,
+                '고장 원인 분석 결과와 예상 견적이 주문서에 자동으로 입력되었습니다.',
+                'Kết quả phân tích sự cố và giá dự kiến đã được điền tự động.',
+                'Visual diagnosis summary and estimated price have been automatically filled.'
+              )}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div
+          onClick={() => {
+            window.location.href = `/${locale}/ai-doctor`;
+          }}
+          className="rounded-2xl border border-blue-100 bg-blue-50/70 p-3.5 flex items-center justify-between cursor-pointer hover:bg-blue-100/70 transition-colors"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl">🤖</span>
+            <div>
+              <p className="text-xs font-bold text-blue-900">
+                {L(locale, '고장 원인이나 예상 견적을 잘 모르겠다면?', 'Chưa rõ nguyên nhân hoặc giá dự kiến?', 'Unsure of defect or estimated cost?')}
+              </p>
+              <p className="text-[11px] text-blue-700">
+                {L(locale, '사진 1장으로 3초 만에 AI 진단받기 →', 'Chẩn đoán AI qua 1 ảnh trong 3 giây →', 'Get 3-sec AI visual diagnosis →')}
+              </p>
+            </div>
+          </div>
+          <span className="rounded-lg bg-blue-600 text-white text-[11px] font-bold px-2.5 py-1 shrink-0">
+            {L(locale, '진단받기', 'Chẩn đoán', 'Diagnose')}
+          </span>
+        </div>
+      )}
+
       {/* 카테고리 */}
       <div>
         <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-text-muted)' }}>

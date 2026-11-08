@@ -61,7 +61,14 @@ export default function SiteHeader({ locale }: { locale: string }) {
         />
       </a>
 
-      <nav aria-label="main" className="flex min-w-0 items-center">
+      <nav aria-label="main" className="flex min-w-0 items-center gap-0.5">
+        <button
+          onClick={() => router.push(`/${locale}/ai-doctor`)}
+          className={`${NAV_BTN} bg-white/20 text-yellow-200 hover:text-white flex items-center gap-1`}
+        >
+          <span>🤖</span>
+          <span>{locale === 'vi' ? 'AI Bác sĩ' : locale === 'en' ? 'AI Doctor' : 'AI 진단'}</span>
+        </button>
         <button onClick={goServices} className={NAV_BTN}>
           {tCommon('nav_services')}
         </button>

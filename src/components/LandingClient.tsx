@@ -503,9 +503,17 @@ export default function LandingClient({ locale }: { locale: string }) {
 
             <div className="flex gap-2 flex-wrap">
               <button
+                onClick={() => router.push(`/${locale}/ai-doctor`)}
+                className="px-4 py-2.5 rounded-xl bg-white font-extrabold text-xs shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center gap-1.5"
+                style={{ color: '#D32F2F' }}
+              >
+                <span>🤖</span>
+                <span>{locale === 'vi' ? 'AI Chẩn đoán sự cố' : locale === 'en' ? 'AI Defect Diagnosis' : 'AI 고장진단 & 견적'}</span>
+              </button>
+              <button
                 onClick={() => openRequestModal()}
-                className="px-4 py-2.5 rounded-xl bg-white font-bold text-xs shadow-lg hover:shadow-xl active:scale-95 transition-all"
-                style={{ color: 'var(--color-primary)' }}
+                className="px-4 py-2.5 rounded-xl text-white font-bold text-xs active:scale-95 transition-all"
+                style={{ background: 'var(--color-navy)' }}
               >
                 {t('cta_request')}
               </button>
@@ -514,8 +522,7 @@ export default function LandingClient({ locale }: { locale: string }) {
                   const el = document.getElementById('services');
                   el?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="px-4 py-2.5 rounded-xl text-white font-bold text-xs active:scale-95 transition-all"
-                style={{ background: 'var(--color-navy)' }}
+                className="px-3.5 py-2.5 rounded-xl text-white/90 font-semibold text-xs border border-white/25 active:scale-95 transition-all"
               >
                 {t('cta_quote')}
               </button>
@@ -548,8 +555,48 @@ export default function LandingClient({ locale }: { locale: string }) {
 
       {/* ── Service section ── */}
       <section id="services" className="px-4 pb-8">
+        {/* 🤖 AI 사진 고장진단 & 즉시 견적기 배너 */}
+        <div
+          onClick={() => router.push(`/${locale}/ai-doctor`)}
+          className="mt-4 mb-3 rounded-2xl p-4 cursor-pointer relative overflow-hidden transition-all hover:shadow-md active:scale-[0.99] border flex items-center justify-between gap-3"
+          style={{
+            background: 'linear-gradient(135deg, #FFF5F5 0%, #FFFFFF 65%, #FFF0F0 100%)',
+            borderColor: '#FFCDD2',
+          }}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-md text-2xl">
+              🤖
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-red-100 text-red-700">
+                  HOT · 3초 진단
+                </span>
+                <span className="text-xs font-bold" style={{ color: 'var(--color-text)' }}>
+                  {locale === 'vi' ? 'AI Bác sĩ nhà cửa' : locale === 'en' ? 'AI Home Doctor' : 'AI 사진 고장진단 & 즉시 견적'}
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                {locale === 'vi'
+                  ? 'Chụp 1 ảnh → Biết ngay nguyên nhân & giá sửa chữa Hà Nội'
+                  : locale === 'en'
+                  ? 'Upload 1 photo → Instant root cause & Hanoi repair cost'
+                  : '사진 1장으로 고장 원인 분석 & 하노이 시세 견적 즉시 확인'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="shrink-0 rounded-xl px-3.5 py-2 text-xs font-extrabold text-white shadow-sm transition-transform active:scale-95"
+            style={{ background: 'var(--color-primary)' }}
+          >
+            {locale === 'vi' ? 'Thử ngay →' : locale === 'en' ? 'Try Now →' : '진단하기 →'}
+          </button>
+        </div>
+
         {/* Search */}
-        <div className="relative mt-4 mb-3">
+        <div className="relative mb-3">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--color-text-muted, #9494a4)' }}>🔍</span>
           <input
             type="search"

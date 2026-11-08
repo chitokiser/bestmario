@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import OrderForm from '@/components/OrderForm';
 import { useSupabase } from '@/hooks/useSupabase';
@@ -81,12 +81,14 @@ export default function NewOrderPage({ params }: { params: Promise<{ locale: str
         ) : loadError ? (
           <p className="text-sm font-semibold" style={{ color: '#D32F2F' }}>{loadError}</p>
         ) : (
-          <OrderForm
-            categories={categories}
-            products={products}
-            locale={locale}
-            onSuccess={handleSuccess}
-          />
+          <Suspense fallback={<p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{t('불러오는 중…', 'Đang tải…', 'Loading…')}</p>}>
+            <OrderForm
+              categories={categories}
+              products={products}
+              locale={locale}
+              onSuccess={handleSuccess}
+            />
+          </Suspense>
         )}
       </div>
     </main>
