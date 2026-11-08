@@ -7,7 +7,12 @@ import { auth } from '@/lib/firebase';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useSupabase } from '@/hooks/useSupabase';
 import ApplicationStatus from '@/components/ApplicationStatus';
-import type { TechnicianProfile, UserRole } from '@/types/supabase';
+import type { TechnicianProfile, UserRole, Warranty, ServiceOrder } from '@/types/supabase';
+
+interface ActiveWarrantyItem {
+  warranty: Warranty;
+  order: ServiceOrder;
+}
 
 const ROLE_LABEL: Record<UserRole, { ko: string; vi: string; en: string }> = {
   customer:   { ko: '고객',   vi: 'Khách hàng',    en: 'Customer' },
@@ -23,6 +28,61 @@ export default function MyPage({ params }: { params: Promise<{ locale: string }>
   const { user, wallets, role, roleLoading, authLoading } = useAuthState();
   const supabase = useSupabase();
   const [application, setApplication] = useState<TechnicianProfile | null>(null);
+  const [activeWarranties, setActiveWarranties] = useState<ActiveWarrantyItem[]>([]);
+
+  // 내 활성 A/S 보증서 조회 (고객 완료 주문 중 만료되지 않은 보증)
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    async function loadWarranties() {
+      // 1. 내 주문 중 완료된 주문들 조회
+      const { data: orders } = await supabase
+        .from('service_orders')
+        .select('*')
+        .eq('customer_uid', user!.uid)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (!orders || orders.length === 0 || cancelled) return;
+
+      const orderIds = orders.map((o) => o.id);
+      const { data: warranties } = await supabase
+        .from('warranties')
+        .select('*')
+        .in('order_id', orderIds);
+
+      if (cancelled) return;
+
+      const items: ActiveWarrantyItem[] = [];
+
+      for (const order of orders) {
+        const found = warranties?.find((w) => w.order_id === order.id);
+        if (found) {
+          items.push({ warranty: found, order });
+        } else {
+          // 주문 완료 후 가상 30일 보증 처리
+          items.push({
+            warranty: {
+              id: order.id,
+              order_id: order.id,
+              status: 'active',
+              expires_at: new Date(new Date(order.created_at).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            },
+            order,
+          });
+        }
+      }
+
+      setActiveWarranties(items);
+    }
+
+    void loadWarranties();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, user]);
 
   // 기술자 신청 진행상태 (신청 이력이 있는 계정만)
   useEffect(() => {
@@ -170,6 +230,71 @@ export default function MyPage({ params }: { params: Promise<{ locale: string }>
                 ))}
               </div>
             </section>
+
+            {/* 활성 30일 무상 A/S 보증서 섹션 */}
+            {activeWarranties.length > 0 && (
+              <section className="mt-3 rounded-2xl border p-4 shadow-sm" style={SURFACE}>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-xs font-extrabold flex items-center gap-1.5" style={{ color: 'var(--color-primary)' }}>
+                    <span>🛡️</span>
+                    <span>{t('내 안심 A/S 보증서', 'Bảo hành an tâm của tôi', 'My Active Warranties')}</span>
+                    <span className="ml-1 rounded-full px-2 py-0.5 text-[10px] font-black text-white" style={{ background: 'var(--color-primary)' }}>
+                      {activeWarranties.length}
+                    </span>
+                  </h2>
+                  <span className="text-[11px] font-bold text-emerald-600">
+                    {t('30일 무상 케어', 'Bảo hành miễn phí 30 ngày', '30-day Free Care')}
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {activeWarranties.map(({ warranty, order }) => {
+                    const exp = new Date(warranty.expires_at).getTime();
+                    const now = Date.now();
+                    const daysLeft = Math.ceil((exp - now) / (1000 * 60 * 60 * 24));
+                    const isAlive = daysLeft > 0;
+
+                    return (
+                      <div
+                        key={warranty.id}
+                        onClick={() => router.push(`/${locale}/orders/${order.id}`)}
+                        className="cursor-pointer rounded-xl border p-3 transition-all hover:border-red-400 active:scale-[0.99]"
+                        style={{
+                          background: 'color-mix(in srgb, var(--color-surface) 90%, var(--color-bg))',
+                          borderColor: 'var(--color-border)',
+                        }}
+                      >
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-mono font-extrabold text-gray-800 dark:text-gray-200">
+                            BM-W-{order.id.slice(0, 8).toUpperCase()}
+                          </span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
+                              isAlive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            {isAlive ? `D-${daysLeft} ${t('보증 유효', 'Có hiệu lực', 'Active')}` : t('보증 만료', 'Hết hạn', 'Expired')}
+                          </span>
+                        </div>
+
+                        <p className="mt-1.5 text-xs font-bold truncate" style={{ color: 'var(--color-text)' }}>
+                          {order.address}
+                        </p>
+
+                        <div className="mt-2 flex items-center justify-between text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                          <span>
+                            {t('만료일', 'Hết hạn', 'Expires')}: {new Date(warranty.expires_at).toLocaleDateString()}
+                          </span>
+                          <span className="font-extrabold flex items-center gap-0.5" style={{ color: 'var(--color-primary)' }}>
+                            {t('보증서·QR 보기', 'Xem bảo hành', 'View Card')} →
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
 
             {application && (
               <div className="mt-3">

@@ -10,6 +10,7 @@ import { useAuthState } from '@/hooks/useAuthState';
 import PushBanner from '@/components/PushBanner';
 import OrderContact from '@/components/OrderContact';
 import ReviewForm from '@/components/ReviewForm';
+import WarrantyCard from '@/components/WarrantyCard';
 import OrderComments from '@/components/OrderComments';
 import PaymentStatus from '@/components/PaymentStatus';
 import { formatDateTime, formatVND, localizedName } from '@/lib/format';
@@ -309,6 +310,21 @@ export default function OrderDetailPage({
       {order.technician_uid && order.status !== 'cancelled' && (
         <div className="mb-4">
           <OrderContact orderId={order.id} locale={locale} />
+        </div>
+      )}
+
+      {/* 30일 안심 무상 A/S 디지털 보증 카드 (스펙 §10) */}
+      {order.status === 'completed' && (
+        <div className="mb-4">
+          <WarrantyCard
+            orderId={order.id}
+            categoryName={category ? localizedName(category, locale) : (order.category_id || '')}
+            technician={technician}
+            completedAt={order.created_at}
+            expiresAt={warranty?.expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()}
+            address={order.address}
+            locale={locale}
+          />
         </div>
       )}
 
