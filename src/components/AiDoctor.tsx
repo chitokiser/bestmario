@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatVND } from '@/lib/format';
+import { useAuthState } from '@/hooks/useAuthState';
+import { useLogin } from '@/hooks/useLogin';
 
 export interface DiagnosisResult {
   categoryId: string;
@@ -30,6 +32,8 @@ export default function AiDoctor({
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user, authLoading } = useAuthState();
+  const { login, joinLoading } = useLogin(locale);
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -42,6 +46,10 @@ export default function AiDoctor({
     locale === 'vi' ? vi : locale === 'en' ? en : ko;
 
   const handleFileChange = (files: FileList | null) => {
+    if (!user) {
+      void login();
+      return;
+    }
     if (!files || files.length === 0) return;
     const file = files[0];
     if (!file.type.startsWith('image/')) {
@@ -62,6 +70,10 @@ export default function AiDoctor({
   };
 
   const handleDiagnose = async () => {
+    if (!user) {
+      void login();
+      return;
+    }
     if (!imageBase64) {
       setError(t('먼저 고장 부위 사진을 올려주세요.', 'Vui lòng chọn ảnh sự cố trước.', 'Please upload a photo of the defect first.'));
       return;
@@ -95,6 +107,10 @@ export default function AiDoctor({
   };
 
   const handleProceedOrder = () => {
+    if (!user) {
+      void login();
+      return;
+    }
     if (!result) return;
 
     if (onApplyOrder && imageBase64) {
@@ -151,101 +167,141 @@ export default function AiDoctor({
           )}
         </p>
 
-        {/* 파일 업로드 드롭존 */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={(e) => handleFileChange(e.target.files)}
-          className="hidden"
-        />
-
-        {imagePreview ? (
-          <div className="relative mb-3 overflow-hidden rounded-2xl border" style={{ borderColor: 'var(--color-border, #ebebed)' }}>
-            <img
-              src={imagePreview}
-              alt={t('고장 사진', 'Ảnh sự cố', 'Defect photo')}
-              className="w-full max-h-64 object-cover"
+        {!authLoading && !user ? (
+          <div
+            className="rounded-2xl border p-6 text-center my-2"
+            style={{
+              background: 'linear-gradient(135deg, #FFF9F9 0%, #FFFFFF 100%)',
+              borderColor: '#FFCDD2',
+            }}
+          >
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-2xl">
+              🔒
+            </div>
+            <h3 className="text-sm font-extrabold" style={{ color: 'var(--color-text)' }}>
+              {t('회원 전용 서비스입니다', 'Dành riêng cho thành viên', 'Members-Only Service')}
+            </h3>
+            <p className="mt-1 text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+              {t(
+                'AI 사진 고장진단 및 예상 견적 확인은 회원만 등록 가능합니다. 구글 계정으로 3초 만에 로그인 후 무료로 이용해 보세요!',
+                'Chức năng chẩn đoán sự cố qua ảnh AI chỉ dành cho thành viên. Đăng nhập 3 giây bằng Google để tiếp tục!',
+                'AI photo diagnosis is reserved for members. Log in with Google in 3 seconds to get started!'
+              )}
+            </p>
+            <button
+              type="button"
+              onClick={login}
+              disabled={joinLoading}
+              className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-black text-white shadow-md transition-transform active:scale-95 disabled:opacity-50"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              <span>🔑</span>
+              <span>
+                {joinLoading
+                  ? t('로그인 중…', 'Đang đăng nhập…', 'Logging in…')
+                  : t('구글로 3초 로그인하고 진단받기', 'Đăng nhập Google trong 3 giây', 'Log in with Google in 3s')}
+              </span>
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* 파일 업로드 드롭존 */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => handleFileChange(e.target.files)}
+              className="hidden"
             />
-            {isAnalyzing && (
-              <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white backdrop-blur-xs">
-                <div className="relative w-16 h-16 mb-2">
-                  <div className="absolute inset-0 rounded-full border-4 border-red-500/30 border-t-red-500 animate-spin" />
-                  <span className="absolute inset-0 flex items-center justify-center text-xl">🔍</span>
-                </div>
-                <p className="text-xs font-bold animate-pulse">
-                  {t('AI가 고장 원인과 시세를 분석 중입니다…', 'AI đang phân tích sự cố & giá thị trường…', 'AI is analyzing defect and market price…')}
-                </p>
+
+            {imagePreview ? (
+              <div className="relative mb-3 overflow-hidden rounded-2xl border" style={{ borderColor: 'var(--color-border, #ebebed)' }}>
+                <img
+                  src={imagePreview}
+                  alt={t('고장 사진', 'Ảnh sự cố', 'Defect photo')}
+                  className="w-full max-h-64 object-cover"
+                />
+                {isAnalyzing && (
+                  <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white backdrop-blur-xs">
+                    <div className="relative w-16 h-16 mb-2">
+                      <div className="absolute inset-0 rounded-full border-4 border-red-500/30 border-t-red-500 animate-spin" />
+                      <span className="absolute inset-0 flex items-center justify-center text-xl">🔍</span>
+                    </div>
+                    <p className="text-xs font-bold animate-pulse">
+                      {t('AI가 고장 원인과 시세를 분석 중입니다…', 'AI đang phân tích sự cố & giá thị trường…', 'AI is analyzing defect and market price…')}
+                    </p>
+                  </div>
+                )}
+                {!isAnalyzing && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute top-2 right-2 rounded-xl bg-black/60 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm hover:bg-black/80"
+                  >
+                    🔄 {t('사진 다시 선택', 'Đổi ảnh', 'Change photo')}
+                  </button>
+                )}
               </div>
-            )}
-            {!isAnalyzing && (
+            ) : (
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute top-2 right-2 rounded-xl bg-black/60 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm hover:bg-black/80"
+                className="w-full rounded-2xl border-2 border-dashed py-8 px-4 flex flex-col items-center justify-center gap-2 transition-colors hover:border-red-400"
+                style={{ borderColor: 'var(--color-border, #d1d5db)', background: 'var(--color-bg, #f9fafb)' }}
               >
-                🔄 {t('사진 다시 선택', 'Đổi ảnh', 'Change photo')}
+                <span className="text-3xl">📸</span>
+                <div className="text-center">
+                  <p className="text-xs font-bold" style={{ color: 'var(--color-text)' }}>
+                    {t('고장 부위 사진 촬영 또는 업로드', 'Chụp ảnh hoặc tải lên ảnh sự cố', 'Take photo or upload defect image')}
+                  </p>
+                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                    {t('카메라 촬영 / 갤러리 선택 가능', 'Hỗ trợ chụp trực tiếp từ máy ảnh', 'Supports live camera capture or gallery')}
+                  </p>
+                </div>
               </button>
             )}
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full rounded-2xl border-2 border-dashed py-8 px-4 flex flex-col items-center justify-center gap-2 transition-colors hover:border-red-400"
-            style={{ borderColor: 'var(--color-border, #d1d5db)', background: 'var(--color-bg, #f9fafb)' }}
-          >
-            <span className="text-3xl">📸</span>
-            <div className="text-center">
-              <p className="text-xs font-bold" style={{ color: 'var(--color-text)' }}>
-                {t('고장 부위 사진 촬영 또는 업로드', 'Chụp ảnh hoặc tải lên ảnh sự cố', 'Take photo or upload defect image')}
-              </p>
-              <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                {t('카메라 촬영 / 갤러리 선택 가능', 'Hỗ trợ chụp trực tiếp từ máy ảnh', 'Supports live camera capture or gallery')}
-              </p>
+
+            {/* 증상 메모 입력 (선택) */}
+            <div className="mt-3">
+              <input
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={t(
+                  '추가 증상 입력 (예: 어제부터 물이 떨어져요, 찬바람이 안 나와요)',
+                  'Mô tả thêm (vd: từ hôm qua bắt đầu chảy nước, không mát…)',
+                  'Optional details (e.g., started leaking water yesterday, not cooling)'
+                )}
+                disabled={isAnalyzing}
+                className="w-full rounded-xl border px-3 py-2.5 text-xs outline-none"
+                style={{
+                  background: 'var(--color-bg, #f7f7f8)',
+                  borderColor: 'var(--color-border, #ebebed)',
+                  color: 'var(--color-text)',
+                }}
+              />
             </div>
-          </button>
-        )}
 
-        {/* 증상 메모 입력 (선택) */}
-        <div className="mt-3">
-          <input
-            type="text"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder={t(
-              '추가 증상 입력 (예: 어제부터 물이 떨어져요, 찬바람이 안 나와요)',
-              'Mô tả thêm (vd: từ hôm qua bắt đầu chảy nước, không mát…)',
-              'Optional details (e.g., started leaking water yesterday, not cooling)'
+            {error && (
+              <p className="mt-2 text-xs font-semibold" style={{ color: '#D32F2F' }}>
+                ⚠️ {error}
+              </p>
             )}
-            disabled={isAnalyzing}
-            className="w-full rounded-xl border px-3 py-2.5 text-xs outline-none"
-            style={{
-              background: 'var(--color-bg, #f7f7f8)',
-              borderColor: 'var(--color-border, #ebebed)',
-              color: 'var(--color-text)',
-            }}
-          />
-        </div>
 
-        {error && (
-          <p className="mt-2 text-xs font-semibold" style={{ color: '#D32F2F' }}>
-            ⚠️ {error}
-          </p>
+            <button
+              type="button"
+              onClick={handleDiagnose}
+              disabled={!imageBase64 || isAnalyzing}
+              className="mt-4 w-full rounded-2xl py-3 text-sm font-extrabold text-white transition-opacity hover:opacity-95 disabled:opacity-50"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              {isAnalyzing
+                ? t('⚡ 3초 만에 분석 중…', '⚡ Đang phân tích…', '⚡ Analyzing…')
+                : t('🤖 AI 정밀 고장진단 & 견적 확인', '🤖 AI Chẩn đoán & Báo giá ngay', '🤖 Run AI Diagnosis & Estimate')}
+            </button>
+          </>
         )}
-
-        <button
-          type="button"
-          onClick={handleDiagnose}
-          disabled={!imageBase64 || isAnalyzing}
-          className="mt-4 w-full rounded-2xl py-3 text-sm font-extrabold text-white transition-opacity hover:opacity-95 disabled:opacity-50"
-          style={{ background: 'var(--color-primary)' }}
-        >
-          {isAnalyzing
-            ? t('⚡ 3초 만에 분석 중…', '⚡ Đang phân tích…', '⚡ Analyzing…')
-            : t('🤖 AI 정밀 고장진단 & 견적 확인', '🤖 AI Chẩn đoán & Báo giá ngay', '🤖 Run AI Diagnosis & Estimate')}
-        </button>
       </div>
 
       {/* 진단 결과 카드 */}

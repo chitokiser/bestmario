@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import OrderForm from '@/components/OrderForm';
 import { useSupabase } from '@/hooks/useSupabase';
 import { useAuthState } from '@/hooks/useAuthState';
+import { useLogin } from '@/hooks/useLogin';
 import type { ServiceCategory, ServiceOrder, ServiceProduct } from '@/types/supabase';
 
 export default function NewOrderPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -12,6 +13,7 @@ export default function NewOrderPage({ params }: { params: Promise<{ locale: str
   const router = useRouter();
   const supabase = useSupabase();
   const { user, authLoading } = useAuthState();
+  const { login, joinLoading } = useLogin(locale);
 
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [products, setProducts] = useState<ServiceProduct[]>([]);
@@ -59,19 +61,32 @@ export default function NewOrderPage({ params }: { params: Promise<{ locale: str
         </p>
 
         {!authLoading && !user ? (
-          <div className="rounded-2xl border p-6 text-center" style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}>
-            <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text)' }}>
-              {t('로그인이 필요합니다', 'Cần đăng nhập', 'Login required')}
+          <div className="rounded-3xl border p-8 text-center" style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, #ebebed)' }}>
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-2xl">
+              🔒
+            </div>
+            <p className="text-sm font-extrabold mb-1" style={{ color: 'var(--color-text)' }}>
+              {t('회원 전용 서비스입니다', 'Dành riêng cho thành viên', 'Members-Only Service')}
             </p>
-            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-              {t('홈에서 로그인 후 다시 시도해 주세요.', 'Hãy đăng nhập ở trang chủ rồi thử lại.', 'Please log in from the home page and try again.')}
+            <p className="text-xs max-w-xs mx-auto leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+              {t(
+                '서비스 주문 및 견적 신청은 회원만 등록 가능합니다. 구글 계정으로 3초 만에 로그인 후 바로 진행해 보세요!',
+                'Chỉ thành viên mới có thể đặt dịch vụ. Đăng nhập 3 giây bằng Google để tiếp tục!',
+                'Only members can place service orders. Log in with Google in 3 seconds to proceed!'
+              )}
             </p>
             <button
-              onClick={() => router.push(`/${locale}`)}
-              className="mt-4 rounded-xl px-5 py-2.5 text-sm font-bold text-white"
+              onClick={login}
+              disabled={joinLoading}
+              className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-black text-white shadow-md transition-transform active:scale-95 disabled:opacity-50"
               style={{ background: 'var(--color-primary)' }}
             >
-              {t('홈으로', 'Về trang chủ', 'Go home')}
+              <span>🔑</span>
+              <span>
+                {joinLoading
+                  ? t('로그인 중…', 'Đang đăng nhập…', 'Logging in…')
+                  : t('구글로 3초 로그인하기', 'Đăng nhập Google trong 3 giây', 'Log in with Google in 3s')}
+              </span>
             </button>
           </div>
         ) : loading ? (
