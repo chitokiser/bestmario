@@ -13,6 +13,7 @@ import ReviewForm from '@/components/ReviewForm';
 import OrderComments from '@/components/OrderComments';
 import PaymentStatus from '@/components/PaymentStatus';
 import { formatDateTime, formatVND, localizedName } from '@/lib/format';
+import { BESTMARIO_ZALO_PHONE, getZaloDirectLink } from '@/lib/zaloDispatch';
 import type { Payment, ServiceCategory, ServiceOrder, Warranty } from '@/types/supabase';
 import type { TechnicianPublic } from '@/hooks/useQuotations';
 
@@ -203,6 +204,56 @@ export default function OrderDetailPage({
 
   return (
     <Shell locale={locale} onBack={back}>
+      {order.status === 'pending' && (
+        <div
+          className="mb-4 rounded-2xl border p-4 flex items-center justify-between gap-3 shadow-xs"
+          style={{
+            background: 'linear-gradient(135deg, #E3F2FD 0%, #FFFFFF 70%, #E1F5FE 100%)',
+            borderColor: '#90CAF9',
+          }}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white font-black text-xs shadow-xs">
+              Zalo
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-black text-blue-950">
+                {t('⚡ 긴급 출동 또는 빠른 기술자 배정 필요', 'Cần điều phối thợ khẩn cấp?', 'Need urgent dispatch?')}
+              </p>
+              <p className="text-[11px] text-blue-800 line-clamp-1 mt-0.5">
+                {t('베스트마리오 Zalo 고객센터로 문의하시면 5분 내 배정해 드립니다.', 'Nhắn Zalo BestMario để được điều thợ trong 5 phút.', 'Chat on Zalo for 5-min dispatch support.')}
+              </p>
+            </div>
+          </div>
+          <a
+            href={getZaloDirectLink(BESTMARIO_ZALO_PHONE)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 active:scale-95"
+          >
+            {t('Zalo 문의', 'Chat Zalo', 'Chat Zalo')}
+          </a>
+        </div>
+      )}
+
+      {(order.status === 'assigned' || order.status === 'in_progress') && (
+        <div className="mb-4 rounded-2xl border border-blue-200 bg-blue-50/70 p-3.5 flex items-center gap-2.5 shadow-xs">
+          <span className="text-2xl shrink-0 animate-bounce">🚗</span>
+          <div className="min-w-0">
+            <p className="text-xs font-black text-blue-950">
+              {t('기술자 배정 완료 및 출동 중', 'Kỹ thuật viên đang di chuyển', 'Technician on the way')}
+            </p>
+            <p className="text-[11px] text-blue-800 mt-0.5">
+              {t(
+                '기술자가 방문 주소로 이동 중입니다. 도착 전 전화/잘로로 연락드립니다.',
+                'Thợ đang đến địa chỉ của bạn. Sẽ liên hệ qua Zalo/gọi trước khi đến.',
+                'Technician is en route and will contact you shortly via phone/Zalo.'
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
       {order.status === 'pending' && <PushBanner locale={locale} audience="customer" />}
 
       {/* 헤더 */}

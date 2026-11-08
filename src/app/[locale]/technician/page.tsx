@@ -7,6 +7,7 @@ import PaymentStatus from '@/components/PaymentStatus';
 import { useTechnicianOrders } from '@/hooks/useTechnicianOrders';
 import { useSupabase } from '@/hooks/useSupabase';
 import { formatDateTime, formatVND, localizedName } from '@/lib/format';
+import { BESTMARIO_ZALO_PHONE, getZaloDirectLink, buildZaloNewOrderText, openZaloChatWithMessage } from '@/lib/zaloDispatch';
 import type { ServiceCategory, ServiceOrder } from '@/types/supabase';
 
 export default function TechnicianHomePage({ params }: { params: Promise<{ locale: string }> }) {
@@ -122,6 +123,42 @@ export default function TechnicianHomePage({ params }: { params: Promise<{ local
       {error && <p className="text-sm font-semibold" style={{ color: '#D32F2F' }}>{error}</p>}
       {actionError && <p className="text-sm font-semibold" style={{ color: '#D32F2F' }}>{actionError}</p>}
 
+      {/* ⚡ Zalo 실시간 일감 알림 배너 */}
+      <div
+        className="rounded-3xl border p-4 shadow-sm flex items-center justify-between gap-3"
+        style={{
+          background: 'linear-gradient(135deg, #E3F2FD 0%, #FFFFFF 65%, #E1F5FE 100%)',
+          borderColor: '#90CAF9',
+        }}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white font-black text-sm shadow-sm">
+            Zalo
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-blue-200 text-blue-900">
+                베트남 1위 메신저
+              </span>
+              <span className="text-xs font-bold text-blue-950">
+                {t('Zalo 실시간 일감 알림 채널', 'Kênh thông báo Zalo', 'Zalo Realtime Dispatch')}
+              </span>
+            </div>
+            <p className="text-[11px] text-blue-800 line-clamp-1 mt-0.5">
+              {t('내 기술 분야에 새 일감이 등록되면 Zalo로 즉시 알림을 발송합니다.', 'Nhận thông báo Zalo ngay khi có đơn mới.', 'Instant Zalo alerts whenever matching jobs arrive.')}
+            </p>
+          </div>
+        </div>
+        <a
+          href={getZaloDirectLink(BESTMARIO_ZALO_PHONE)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-extrabold text-white shadow-sm hover:bg-blue-700 active:scale-95 transition-transform"
+        >
+          {t('Zalo 알림 받기', 'Bật Zalo', 'Enable Zalo')}
+        </a>
+      </div>
+
       {/* 대기 주문 */}
       <section>
         <h2 className="text-sm font-extrabold mb-2" style={{ color: 'var(--color-text)' }}>
@@ -163,8 +200,28 @@ export default function TechnicianHomePage({ params }: { params: Promise<{ local
                   </button>
                   )}
                   <button
+                    onClick={() => {
+                      const text = buildZaloNewOrderText(
+                        {
+                          orderId: o.id,
+                          categoryName: categoryLabel(o.category_id),
+                          address: o.address,
+                          price: o.offered_price || (o.unit_price && o.quantity ? o.unit_price * o.quantity : undefined) || undefined,
+                          note: o.note,
+                        },
+                        locale
+                      );
+                      openZaloChatWithMessage(BESTMARIO_ZALO_PHONE, text);
+                    }}
+                    className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs font-bold text-blue-700 hover:bg-blue-100 flex items-center gap-1"
+                    title={t('Zalo로 일감 내용 전송', 'Gửi đơn qua Zalo', 'Share via Zalo')}
+                  >
+                    <span>💬</span>
+                    <span>Zalo</span>
+                  </button>
+                  <button
                     onClick={() => void rejectOrder(o.id)}
-                    className="flex-1 rounded-xl border py-2.5 text-sm font-bold"
+                    className="rounded-xl border px-3 py-2.5 text-xs font-bold"
                     style={{ borderColor: 'var(--color-border, #ebebed)', color: 'var(--color-text-muted)' }}
                   >
                     {t('거절', 'Từ chối', 'Decline')}

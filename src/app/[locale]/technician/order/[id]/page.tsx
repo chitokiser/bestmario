@@ -7,6 +7,7 @@ import OrderContact from '@/components/OrderContact';
 import PaymentStatus from '@/components/PaymentStatus';
 import { useTechnicianOrders } from '@/hooks/useTechnicianOrders';
 import { formatDateTime, formatVND } from '@/lib/format';
+import { BESTMARIO_ZALO_PHONE, buildZaloDispatchNoticeText, openZaloChatWithMessage } from '@/lib/zaloDispatch';
 
 const MAX_PHOTOS = 10;
 
@@ -158,14 +159,37 @@ export default function TechnicianOrderPage({
           <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>
             {t('현장에 도착해 작업을 시작할 때 누르세요.', 'Nhấn khi bạn đã đến và bắt đầu làm.', 'Tap when you arrive and begin the work.')}
           </p>
-          <button
-            onClick={() => void run('start', () => startWork(order.id))}
-            disabled={busy !== null}
-            className="w-full rounded-xl py-3 text-sm font-extrabold text-white disabled:opacity-50"
-            style={{ background: 'var(--color-primary)' }}
-          >
-            {busy === 'start' ? t('처리 중…', 'Đang xử lý…', 'Processing…') : t('작업 시작', 'Bắt đầu', 'Start work')}
-          </button>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => void run('start', () => startWork(order.id))}
+              disabled={busy !== null}
+              className="w-full rounded-xl py-3 text-sm font-extrabold text-white disabled:opacity-50"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              {busy === 'start' ? t('처리 중…', 'Đang xử lý…', 'Processing…') : t('현장 도착 및 작업 시작', 'Đã đến & Bắt đầu làm', 'Arrived & Start work')}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const text = buildZaloDispatchNoticeText(
+                  {
+                    orderId: order.id,
+                    categoryName: order.category_id,
+                    address: order.address,
+                    technicianName: 'BestMario Pro',
+                  },
+                  20,
+                  locale
+                );
+                openZaloChatWithMessage(BESTMARIO_ZALO_PHONE, text);
+              }}
+              className="w-full rounded-xl border border-blue-200 bg-blue-50 py-2.5 text-xs font-bold text-blue-700 hover:bg-blue-100 flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <span>🚗</span>
+              <span>{t('고객에게 잘로(Zalo)로 출동 알림 보내기 (약 20분 내 도착)', 'Gửi Zalo báo khách đang đến (khoảng 20p)', 'Notify customer via Zalo: on the way')}</span>
+            </button>
+          </div>
         </section>
       )}
 
